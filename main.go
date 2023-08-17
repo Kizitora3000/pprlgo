@@ -95,8 +95,42 @@ func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encrypto
 		evaluator.Relinearize(fhe_v_and_w_Qold, fhe_v_and_w_Qold)
 
 		// EncryptedQtalbe[i]がノイズで爆発する
+		// EncryptedQtalbe[i]がノイズで爆発する
+		fmt.Printf("--- %d ---\n", i+1)
+		temp1 := doublenc.FHEdec(params, encoder, decryptor, EncryptedQtable[i])
+		for i := 0; i < 4; i++ {
+			fmt.Printf("%6.10f, ", temp1[i])
+		}
+		fmt.Println()
+		realValues := make([]float64, len(temp1))
+		for i, val := range temp1 {
+			realValues[i] = real(val)
+		}
+		EncryptedQtable[i] = doublenc.FHEenc(params, encoder, encryptor, realValues)
+
 		evaluator.Add(EncryptedQtable[i], fhe_v_and_w_Qnew, EncryptedQtable[i])
+		temp2 := doublenc.FHEdec(params, encoder, decryptor, EncryptedQtable[i])
+		for i := 0; i < 4; i++ {
+			fmt.Printf("%6.10f, ", temp2[i])
+		}
+		fmt.Println()
+		realValues2 := make([]float64, len(temp2))
+		for i, val := range temp1 {
+			realValues[i] = real(val)
+		}
+		EncryptedQtable[i] = doublenc.FHEenc(params, encoder, encryptor, realValues2)
+
 		evaluator.Sub(EncryptedQtable[i], fhe_v_and_w_Qold, EncryptedQtable[i])
+		temp3 := doublenc.FHEdec(params, encoder, decryptor, EncryptedQtable[i])
+		for i := 0; i < 4; i++ {
+			fmt.Printf("%6.10f, ", temp3[i])
+		}
+		fmt.Println()
+		realValues3 := make([]float64, len(temp3))
+		for i, val := range temp1 {
+			realValues[i] = real(val)
+		}
+		EncryptedQtable[i] = doublenc.FHEenc(params, encoder, encryptor, realValues3)
 	}
 }
 
