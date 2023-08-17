@@ -1,0 +1,25 @@
+/*
+Please refer to https://github.com/tuneinsight/lattigo/tree/master/ckks#readme for detail information of parameter.
+
+LogN: 	This parameter use for "N = 2^logN".
+		Parameter N has an impact on both security and performance.
+		(i.g. security increases with N and performance decreases with N)
+
+LogQ:	This parameter is used to calculate Q from the product of a chain of small coprime moduli.
+		Parameter Q has an impact on both security and performance.
+		(i.g. for a fixed N, a larger Q implies both lower security and lower performance)
+
+LogP:	This parameter is σ and the variance used for the error polynomials.
+		Parameter σ is close relationship for security.
+		(i.g. a larger σ implies higher security)
+
+LogScale:	This parameter use for "scale = 2^LogScale".
+			Parameter scale affects accuracy as scale is multiplied by plaintext for encryption.
+			(i.g. a larger scale implies more accuracy)
+*/
+
+/*
+memo
+Check the security level: GetMinimumLevelForRefresh in lattigo/dckks/dutils.go
+(But this function maybe doesn't use?)
+*/
