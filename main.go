@@ -64,15 +64,6 @@ func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encrypto
 	// Qtable[i] += Q_new * (v_and_w) - Qtable[i] * (v_and_w)
 	fhe_Q_news := doublenc.RSAdec(privateKey, Q_news_name)
 	for i := 0; i < len(cloud_platform.Qtable); i++ {
-		for i, row := range EncryptedQtable {
-			decryptedRow := doublenc.FHEdec(params, encoder, decryptor, row)
-			fmt.Printf("Decrypted Qtable Row %d: ", i)
-			for _, val := range decryptedRow {
-				fmt.Printf("%f, ", real(val))
-			}
-			fmt.Println()
-		}
-
 		filename := fmt.Sprintf(VtName+"_%d", i)
 		fhe_v_t := doublenc.RSAdec(privateKey, filename)
 		fhe_w_t := doublenc.RSAdec(privateKey, WtName)
@@ -94,43 +85,23 @@ func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encrypto
 		evaluator.Relinearize(fhe_v_and_w_Qnew, fhe_v_and_w_Qnew)
 		evaluator.Relinearize(fhe_v_and_w_Qold, fhe_v_and_w_Qold)
 
-		// EncryptedQtalbe[i]がノイズで爆発する
-		// EncryptedQtalbe[i]がノイズで爆発する
-		fmt.Printf("--- %d ---\n", i+1)
-		temp1 := doublenc.FHEdec(params, encoder, decryptor, EncryptedQtable[i])
-		for i := 0; i < 4; i++ {
-			fmt.Printf("%6.10f, ", temp1[i])
+		decrypt_fhe_v_and_w_Qnew := doublenc.FHEdec(params, encoder, decryptor, fhe_v_and_w_Qnew)
+		realValues1 := make([]float64, len(decrypt_fhe_v_and_w_Qnew))
+		for i, v := range decrypt_fhe_v_and_w_Qnew {
+			realValues1[i] = real(v)
 		}
-		fmt.Println()
-		realValues := make([]float64, len(temp1))
-		for i, val := range temp1 {
-			realValues[i] = real(val)
-		}
-		EncryptedQtable[i] = doublenc.FHEenc(params, encoder, encryptor, realValues)
+		re_fhe_v_and_w_Qnew := doublenc.FHEenc(params, encoder, encryptor, realValues1)
 
-		evaluator.Add(EncryptedQtable[i], fhe_v_and_w_Qnew, EncryptedQtable[i])
-		temp2 := doublenc.FHEdec(params, encoder, decryptor, EncryptedQtable[i])
-		for i := 0; i < 4; i++ {
-			fmt.Printf("%6.10f, ", temp2[i])
+		decrypt_fhe_v_and_w_Qold := doublenc.FHEdec(params, encoder, decryptor, fhe_v_and_w_Qold)
+		realValues2 := make([]float64, len(decrypt_fhe_v_and_w_Qold))
+		for i, v := range decrypt_fhe_v_and_w_Qold {
+			realValues2[i] = real(v)
 		}
-		fmt.Println()
-		realValues2 := make([]float64, len(temp2))
-		for i, val := range temp1 {
-			realValues[i] = real(val)
-		}
-		EncryptedQtable[i] = doublenc.FHEenc(params, encoder, encryptor, realValues2)
+		re_fhe_v_and_w_Qold := doublenc.FHEenc(params, encoder, encryptor, realValues2)
 
-		evaluator.Sub(EncryptedQtable[i], fhe_v_and_w_Qold, EncryptedQtable[i])
-		temp3 := doublenc.FHEdec(params, encoder, decryptor, EncryptedQtable[i])
-		for i := 0; i < 4; i++ {
-			fmt.Printf("%6.10f, ", temp3[i])
-		}
-		fmt.Println()
-		realValues3 := make([]float64, len(temp3))
-		for i, val := range temp1 {
-			realValues[i] = real(val)
-		}
-		EncryptedQtable[i] = doublenc.FHEenc(params, encoder, encryptor, realValues3)
+		// EncryptedQtalbe[i]がノイズで爆発する
+		evaluator.Add(EncryptedQtable[i], re_fhe_v_and_w_Qnew, EncryptedQtable[i])
+		evaluator.Sub(EncryptedQtable[i], re_fhe_v_and_w_Qold, EncryptedQtable[i])
 	}
 }
 
@@ -208,15 +179,21 @@ func main() {
 	EncryptedQtable = encrypted_Qtable
 
 	v_t := []float64{0, 1, 0}
-	//v_t_name := "v_t"
-	//SecureActionSelection(params, encoder, encryptor, decryptor, evaluator, publicKey, privateKey, v_t, v_t_name)
-	//fmt.Println(doublenc.DEdec(params, encoder, decryptor, privateKey, v_t_name))
+	v_t_name := "v_t"
+	SecureActionSelection(params, encoder, encryptor, decryptor, evaluator, publicKey, privateKey, v_t, v_t_name)
+	fmt.Println(doublenc.DEdec(params, encoder, decryptor, privateKey, v_t_name))
 
 	w_t := []float64{0, 0, 1, 0}
 	Q_new := float64(3.5)
 
+	println("--- previous ---")
+	printEncryptedQtableForDebug(params, encoder, decryptor)
 	SecureQtableUpdating(params, encoder, encryptor, decryptor, evaluator, publicKey, privateKey, v_t, w_t, Q_new)
+	println("--- present ---")
+	printEncryptedQtableForDebug(params, encoder, decryptor)
+}
 
+func printEncryptedQtableForDebug(params ckks.Parameters, encoder ckks.Encoder, decryptor rlwe.Decryptor) {
 	for i, row := range EncryptedQtable {
 		decryptedRow := doublenc.FHEdec(params, encoder, decryptor, row)
 		fmt.Printf("Decrypted Qtable Row %d: ", i)
