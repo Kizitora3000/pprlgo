@@ -6,8 +6,8 @@ import (
 )
 
 func main() {
-	myEnv := qlearn.NewEnvironment()
-	fmt.Print(myEnv)
+	CorridorEnv := qlearn.NewEnvironment()
+	fmt.Println(CorridorEnv)
 }
 
 /*

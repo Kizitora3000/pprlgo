@@ -1,32 +1,50 @@
 package qlearn
 
-type Environment struct {
-	ID_blank   int
-	ID_robot   int
-	ID_crystal int
+import "math/rand"
 
-	n_act             int
-	done              bool
-	field_length      int
-	crystal_candidate []int
-	rwd_fail          float64
-	rwd_move          float64
-	rwd_crystal       float64
+type Environment struct {
+	// constant
+	IDBlank   int
+	IDRobot   int
+	IDCrystal int
+
+	// variable
+	NAct             int
+	Done             bool
+	FieldLength      int
+	CrystalCandidate []int
+	RwdFail          float64
+	RwdMove          float64
+	RwdCrystal       float64
+	RobotPos         int
+	CrystalPos       int
+	RobotState       string
 }
 
-func NewEnvironment() *Environment {
-	env := &Environment{
-		n_act:             2,
-		done:              false,
-		field_length:      4,
-		crystal_candidate: []int{2, 3},
-		rwd_fail:          -1.0,
-		rwd_move:          -1.0,
-		rwd_crystal:       5.0,
+func NewEnvironment() Environment {
+	return Environment{
+		// constant
+		IDBlank:   0,
+		IDRobot:   1,
+		IDCrystal: 2,
+
+		// variable
+		NAct:             2,
+		Done:             false,
+		FieldLength:      4,
+		CrystalCandidate: []int{2, 3},
+		RwdFail:          -1.0,
+		RwdMove:          -1.0,
+		RwdCrystal:       5.0,
+		RobotPos:         -1, // -1 instead of nil
+		CrystalPos:       -1,
+		RobotState:       "",
 	}
-	return env
 }
 
 func (e Environment) reset() []int {
-	return []int{0, 0, 0, 0}
+	e.Done = false
+	e.RobotState = "normal"
+	e.RobotPos = 0
+	idx := rand.Intn(e.FieldLength)
 }
