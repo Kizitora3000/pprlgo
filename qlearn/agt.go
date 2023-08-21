@@ -1,6 +1,6 @@
 package qlearn
 
-type Agt struct {
+type Agent struct {
 	n_act      int
 	init_val_Q int
 	epsilon    float64

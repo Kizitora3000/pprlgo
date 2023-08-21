@@ -18,7 +18,7 @@ var (
 	true_Qtable = []map[string][]int{
 		{
 			"1020": {-1, 3},
-        	"0120": {-1, 4},
+			"0120": {-1, 4},
 			"0010": {5, -2},
 			"0021": {-1, -1},
 			"1002": {-1, 2},
@@ -28,21 +28,21 @@ var (
 		},
 	}
 	obss = []string{
-        "1020",
-        "0120",
-        "0010",
-        "0021",
-        "1002",
-        "0102",
-        "0012",
-        "0001",
+		"1020",
+		"0120",
+		"0010",
+		"0021",
+		"1002",
+		"0102",
+		"0012",
+		"0001",
 	}
 )
 
 func printResult(agt Agt, obss []map[string]float64) {
 	println("result")
-	for i, obs := range(obss) {
-		fmt.Printf("[%s] true: %f, %f - result: %f, %f", 
+	for i, obs := range obss {
+		fmt.Printf("[%s] true: %f, %f - result: %f, %f",
 			obs,
 			true_Qtable[obs][0], true_Qtable[obs][0],
 			agt.Q[obs][0], agt.Q[obs][1])
@@ -51,8 +51,8 @@ func printResult(agt Agt, obss []map[string]float64) {
 
 func learn() {
 	n_step := 5000
-	agt := Agt{}
-	env := Env{}
+	agt := Agent{}
+	env := Environment{}
 
 	obs := env.reset()
 	for i := 0; i < n_step; i++ {

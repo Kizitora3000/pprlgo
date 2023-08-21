@@ -1,8 +1,8 @@
 package qlearn
 
-type Env struct {
+type Environment struct {
 }
 
-func (e Env) reset() []int {
+func (e Environment) reset() []int {
 	return []int{0, 0, 0, 0}
 }
