@@ -8,6 +8,14 @@ import (
 func main() {
 	CorridorEnv := qlearn.NewEnvironment()
 	fmt.Println(CorridorEnv)
+
+	obs := CorridorEnv.Reset()
+	fmt.Println(obs)
+	fmt.Println(CorridorEnv)
+	fmt.Println(CorridorEnv.Step(1))
+	fmt.Println(CorridorEnv.Step(1))
+	fmt.Println(CorridorEnv.Step(1))
+	fmt.Println(CorridorEnv.Step(0))
 }
 
 /*
