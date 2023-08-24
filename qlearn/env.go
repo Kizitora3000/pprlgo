@@ -67,7 +67,6 @@ func (e *Environment) makeObs() []int {
 
 	obs := make([]int, e.FieldLength)
 	obs[e.CrystalPos] = e.IDCrystal
-	obs[e.CrystalPos] = e.IDCrystal
 	obs[e.RobotPos] = e.IDRobot
 
 	return obs

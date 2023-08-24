@@ -6,11 +6,12 @@ import (
 )
 
 func main() {
-	Nstep := 10000
+	Nstep := 5000
 	CorridorEnv := qlearn.NewEnvironment()
 	Agt := qlearn.NewAgent()
 
 	obs := CorridorEnv.Reset()
+	Agt.Reset()
 	for i := 0; i < Nstep; i++ {
 		act := Agt.SelectAction(obs)
 
@@ -21,10 +22,7 @@ func main() {
 		obs = next_obs
 	}
 
-	for key, values := range Agt.Q {
-		fmt.Printf("Key: %s, Values: %v\n", key, values)
-	}
-
+	fmt.Println(Agt.Q)
 }
 
 /*
