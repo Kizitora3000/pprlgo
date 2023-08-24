@@ -15,9 +15,9 @@ type Environment struct {
 	Done             bool
 	FieldLength      int
 	CrystalCandidate []int
-	RwdFail          int
-	RwdMove          int
-	RwdCrystal       int
+	RwdFail          float64
+	RwdMove          float64
+	RwdCrystal       float64
 	RobotPos         int
 	CrystalPos       int
 	RobotState       string
@@ -73,13 +73,13 @@ func (e *Environment) makeObs() []int {
 	return obs
 }
 
-func (e *Environment) Step(act int) (rwd int, done bool, obs []int) {
+func (e *Environment) Step(act int) (rwd float64, done bool, obs []int) {
 	if e.Done == true {
 		obs := e.Reset()
 		return -1, false, obs // -1 instead of None
 	}
 
-	var reward int
+	var reward float64
 	var isDone bool
 
 	if act == 0 { // pick up

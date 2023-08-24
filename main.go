@@ -6,16 +6,25 @@ import (
 )
 
 func main() {
+	Nstep := 10000
 	CorridorEnv := qlearn.NewEnvironment()
-	fmt.Println(CorridorEnv)
+	Agt := qlearn.NewAgent()
 
 	obs := CorridorEnv.Reset()
-	fmt.Println(obs)
-	fmt.Println(CorridorEnv)
-	fmt.Println(CorridorEnv.Step(1))
-	fmt.Println(CorridorEnv.Step(1))
-	fmt.Println(CorridorEnv.Step(1))
-	fmt.Println(CorridorEnv.Step(0))
+	for i := 0; i < Nstep; i++ {
+		act := Agt.SelectAction(obs)
+
+		rwd, done, next_obs := CorridorEnv.Step(act)
+
+		Agt.Learn(obs, act, rwd, done, next_obs)
+
+		obs = next_obs
+	}
+
+	for key, values := range Agt.Q {
+		fmt.Printf("Key: %s, Values: %v\n", key, values)
+	}
+
 }
 
 /*
