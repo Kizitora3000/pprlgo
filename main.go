@@ -1,6 +1,36 @@
 package main
 
 import (
+	"fmt"
+	"pprlgo/qlearn"
+)
+
+func main() {
+	Nstep := 10000
+	CorridorEnv := qlearn.NewEnvironment()
+	Agt := qlearn.NewAgent()
+
+	obs := CorridorEnv.Reset()
+	for i := 0; i < Nstep; i++ {
+		act := Agt.SelectAction(obs)
+
+		rwd, done, next_obs := CorridorEnv.Step(act)
+
+		Agt.Learn(obs, act, rwd, done, next_obs)
+
+		obs = next_obs
+	}
+
+	for key, values := range Agt.Q {
+		fmt.Printf("Key: %s, Values: %v\n", key, values)
+	}
+
+}
+
+/*
+package main
+
+import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
@@ -108,11 +138,11 @@ func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encrypto
 func SecureActionSelection(params ckks.Parameters, encoder ckks.Encoder, encryptor rlwe.Encryptor, decryptor rlwe.Decryptor, evaluator ckks.Evaluator, publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey, v_t []float64, filename string) {
 	VtName := "VtName"
 
-	/* 準同型演算のために縦行列を横に拡張する
-	[0,		[0, 0, 0, 0]
-	 1, ->  [1, 1, 1, 1]
-	 0]		[0, 0, 0, 0]
-	*/
+	// 準同型演算のために縦行列を横に拡張する
+	//[0,		[0, 0, 0, 0]
+	// 1, ->  [1, 1, 1, 1]
+	// 0]		[0, 0, 0, 0]
+
 	for i := 0; i < len(cloud_platform.Qtable); i++ {
 		filename := fmt.Sprintf(VtName+"_%d", i)
 		if v_t[i] == 0 {
@@ -203,3 +233,4 @@ func printEncryptedQtableForDebug(params ckks.Parameters, encoder ckks.Encoder, 
 		fmt.Println()
 	}
 }
+*/
