@@ -5,8 +5,9 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"pprlgo/doublenc"
-	"pprlgo/pprl"
+	"pprlgo/party"
 	"pprlgo/qlearn"
+	"time"
 
 	"github.com/tuneinsight/lattigo/v4/ckks"
 	"github.com/tuneinsight/lattigo/v4/rlwe"
@@ -15,32 +16,12 @@ import (
 var EncryptedQtable []*rlwe.Ciphertext
 
 func main() {
-	Nstep := 5000
-	CorridorEnv := qlearn.NewEnvironment()
-	Agt := qlearn.NewAgent()
-
-	obs := CorridorEnv.Reset()
-	Agt.Reset()
-	for i := 0; i < Nstep; i++ {
-		act := Agt.SelectAction(obs)
-
-		rwd, done, next_obs := CorridorEnv.Step(act)
-
-		Agt.Learn(obs, act, rwd, done, next_obs)
-
-		obs = next_obs
-	}
-
-	for key, _ := range Agt.QKey {
-		fmt.Printf("%s: %f\n", key, Agt.Q[Agt.QKey[key]])
-	}
-
 	params, err := ckks.NewParametersFromLiteral(
 		ckks.ParametersLiteral{
 			LogN:         14,
 			LogQ:         []int{55, 40, 40, 40, 40, 40, 40, 40},
 			LogP:         []int{45, 45},
-			LogSlots:     2,
+			LogSlots:     1,
 			DefaultScale: 1 << 40,
 		})
 	if err != nil {
@@ -57,31 +38,56 @@ func main() {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	publicKey := &privateKey.PublicKey
 
-	// encrypt Qtalbe in CP
-	var encrypted_Qtable []*rlwe.Ciphertext
-	for _, row := range Agt.Q {
-		ciphertext := doublenc.FHEenc(params, encoder, encryptor, row)
-		encrypted_Qtable = append(encrypted_Qtable, ciphertext)
+	keyTools := party.KeyTools{
+		Params:     params,
+		Encryptor:  encryptor,
+		Decryptor:  decryptor,
+		Encoder:    encoder,
+		Evaluator:  evaluator,
+		PrivateKey: privateKey,
+		PublicKey:  publicKey,
 	}
-	EncryptedQtable = encrypted_Qtable
 
-	v_t := []float64{0, 1, 0}
-	v_t_name := "v_t"
-	pprl.SecureActionSelection(params, encoder, encryptor, decryptor, evaluator, publicKey, privateKey, v_t, Agt.LenQ, Agt.Nact, v_t_name)
-	fmt.Println(doublenc.DEdec(params, encoder, decryptor, privateKey, v_t_name))
+	Nstep := 5000
+	CorridorEnv := qlearn.NewEnvironment()
+	Agt := qlearn.NewAgent()
 
-	w_t := []float64{0, 0, 1, 0}
-	Q_new := float64(3.5)
+	obs := CorridorEnv.Reset()
+	Agt.Reset()
 
-	println("--- previous ---")
-	printEncryptedQtableForDebug(params, encoder, decryptor)
-	pprl.SecureQtableUpdating(params, encoder, encryptor, decryptor, evaluator, publicKey, privateKey, v_t, w_t, Q_new, Agt.LenQ, Agt.Nact)
-	println("--- present ---")
-	printEncryptedQtableForDebug(params, encoder, decryptor)
+	var encryptedQtable []*rlwe.Ciphertext
+	for i := 0; i < Agt.LenQ; i++ {
+		ciphertext := doublenc.FHEenc(params, encoder, encryptor, Agt.Q[i])
+		encryptedQtable = append(encryptedQtable, ciphertext)
+	}
+
+	for i := 0; i < Nstep; i++ {
+		start := time.Now()
+		fmt.Printf("───── %d ─────\n", i)
+
+		println("Q candidates:")
+		act := Agt.SelectAction(obs, keyTools, encryptedQtable)
+
+		rwd, done, next_obs := CorridorEnv.Step(act)
+
+		println("true Qnew:")
+		Agt.Learn(obs, act, rwd, done, next_obs, keyTools, encryptedQtable)
+		println("Q table:")
+		printEncryptedQtableForDebug(params, encoder, decryptor, encryptedQtable)
+
+		obs = next_obs
+
+		elapsed := time.Since(start)
+		fmt.Printf("The operation of %d took: %f[sec]\n", i, elapsed.Seconds())
+	}
+
+	for key, _ := range Agt.QKey {
+		fmt.Printf("%s: %f\n", key, Agt.Q[Agt.QKey[key]])
+	}
 }
 
-func printEncryptedQtableForDebug(params ckks.Parameters, encoder ckks.Encoder, decryptor rlwe.Decryptor) {
-	for i, row := range EncryptedQtable {
+func printEncryptedQtableForDebug(params ckks.Parameters, encoder ckks.Encoder, decryptor rlwe.Decryptor, encryptedQtable []*rlwe.Ciphertext) {
+	for i, row := range encryptedQtable {
 		decryptedRow := doublenc.FHEdec(params, encoder, decryptor, row)
 		fmt.Printf("Decrypted Qtable Row %d: ", i)
 		for _, val := range decryptedRow {

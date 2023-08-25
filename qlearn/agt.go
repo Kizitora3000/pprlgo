@@ -1,9 +1,15 @@
 package qlearn
 
 import (
+	"fmt"
 	"math/rand"
+	"pprlgo/doublenc"
+	"pprlgo/party"
+	"pprlgo/pprl"
 	"strconv"
 	"strings"
+
+	"github.com/tuneinsight/lattigo/v4/rlwe"
 )
 
 type Agent struct {
@@ -52,21 +58,35 @@ func (e *Agent) Reset() {
 	e.QKey["9,9,9,9"] = 8
 }
 
-func (e *Agent) SelectAction(obs []int) int {
+func (e *Agent) SelectAction(obs []int, keyTools party.KeyTools, encryptedQtable []*rlwe.Ciphertext) int {
 	act := -1
 	strObs := e.toStr(obs)
+	obsIdx := e.QKey[strObs]
 
-	//e.checkAndAddObservation(strObs)
+	v_t := make([]float64, e.LenQ)
+	v_t[obsIdx] = 1
+	v_t_name := "v_t"
+
+	pprl.SecureActionSelection(keyTools.Params, keyTools.Encoder, keyTools.Encryptor, keyTools.Decryptor, keyTools.Evaluator, keyTools.PublicKey, keyTools.PrivateKey, v_t, e.LenQ, e.Nact, v_t_name, encryptedQtable)
+	Qs := doublenc.DEdec(keyTools.Params, keyTools.Encoder, keyTools.Decryptor, keyTools.PrivateKey, v_t_name)
+	QsFloat64 := make([]float64, len(Qs))
+
+	fmt.Println(QsFloat64)
+
+	for i, v := range Qs {
+		QsFloat64[i] = real(v)
+	}
 
 	if rand.Float64() < e.Epsilon {
 		act = rand.Intn(e.Nact)
 	} else {
-		act = maxIdx(e.Q[e.QKey[strObs]])
+		act = maxIdx(QsFloat64)
 	}
+
 	return act
 }
 
-func (e *Agent) Learn(obs []int, act int, rwd float64, done bool, next_obs []int) {
+func (e *Agent) Learn(obs []int, act int, rwd float64, done bool, next_obs []int, keyTools party.KeyTools, encryptedQtable []*rlwe.Ciphertext) {
 	strObs := e.toStr(obs)
 	next_strObs := e.toStr(next_obs)
 
@@ -85,6 +105,15 @@ func (e *Agent) Learn(obs []int, act int, rwd float64, done bool, next_obs []int
 		fmt.Println(target)
 	*/
 	e.Q[e.QKey[strObs]][act] = (1-e.Alpha)*e.Q[e.QKey[strObs]][act] + e.Alpha*target
+
+	obsIdx := e.QKey[strObs]
+	Qnew := (1-e.Alpha)*e.Q[e.QKey[strObs]][act] + e.Alpha*target
+	v_t := make([]float64, e.LenQ)
+	w_t := make([]float64, e.Nact)
+	v_t[obsIdx] = 1
+	w_t[act] = 1
+	fmt.Println(Qnew)
+	pprl.SecureQtableUpdating(keyTools.Params, keyTools.Encoder, keyTools.Encryptor, keyTools.Decryptor, keyTools.Evaluator, keyTools.PublicKey, keyTools.PrivateKey, v_t, w_t, Qnew, e.LenQ, e.Nact, encryptedQtable)
 }
 
 func (e *Agent) GetQ(obs []int) []float64 {

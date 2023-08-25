@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"pprlgo/doublenc"
 
-	"github.com/tuneinsight/lattigo/ckks"
+	"github.com/tuneinsight/lattigo/v4/ckks"
 	"github.com/tuneinsight/lattigo/v4/rlwe"
 )
 
-func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encryptor rlwe.Encryptor, decryptor rlwe.Decryptor, evaluator ckks.Evaluator, publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey, v_t []float64, w_t []float64, Q_new float64, Nv int, Na int) {
+func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encryptor rlwe.Encryptor, decryptor rlwe.Decryptor, evaluator ckks.Evaluator, publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey, v_t []float64, w_t []float64, Q_new float64, Nv int, Na int, EncryptedQtable []*rlwe.Ciphertext) {
 	WtName := "WtName"
 	VtName := "VtName"
 
@@ -81,7 +81,7 @@ func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encrypto
 	}
 }
 
-func SecureActionSelection(params ckks.Parameters, encoder ckks.Encoder, encryptor rlwe.Encryptor, decryptor rlwe.Decryptor, evaluator ckks.Evaluator, publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey, v_t []float64, Nv int, Na int, filename string) {
+func SecureActionSelection(params ckks.Parameters, encoder ckks.Encoder, encryptor rlwe.Encryptor, decryptor rlwe.Decryptor, evaluator ckks.Evaluator, publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey, v_t []float64, Nv int, Na int, filename string, EncryptedQtable []*rlwe.Ciphertext) {
 	VtName := "VtName"
 
 	// 準同型演算のために縦行列を横に拡張する
