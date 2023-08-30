@@ -17,7 +17,7 @@ var EncryptedQtable []*rlwe.Ciphertext
 func main() {
 	params, err := ckks.NewParametersFromLiteral(
 		ckks.ParametersLiteral{
-			LogN:         13, // 14
+			LogN:         12, // 14
 			LogQ:         []int{55, 40, 40, 40, 40, 40, 40, 40},
 			LogP:         []int{45, 45},
 			LogSlots:     1,
