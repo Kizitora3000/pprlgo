@@ -7,7 +7,6 @@ import (
 	"pprlgo/doublenc"
 	"pprlgo/party"
 	"pprlgo/qlearn"
-	"time"
 
 	"github.com/tuneinsight/lattigo/v4/ckks"
 	"github.com/tuneinsight/lattigo/v4/rlwe"
@@ -18,7 +17,7 @@ var EncryptedQtable []*rlwe.Ciphertext
 func main() {
 	params, err := ckks.NewParametersFromLiteral(
 		ckks.ParametersLiteral{
-			LogN:         14,
+			LogN:         13, // 14
 			LogQ:         []int{55, 40, 40, 40, 40, 40, 40, 40},
 			LogP:         []int{45, 45},
 			LogSlots:     1,
@@ -62,23 +61,30 @@ func main() {
 	}
 
 	for i := 0; i < Nstep; i++ {
-		start := time.Now()
 		fmt.Printf("───── %d ─────\n", i)
 
 		println("Q candidates:")
+
+		//start := time.Now()
 		act := Agt.SelectAction(obs, keyTools, encryptedQtable)
+		//elapsed := time.Since(start)
+		//fmt.Printf("The function took %s to execute.\n", elapsed)
 
 		rwd, done, next_obs := CorridorEnv.Step(act)
 
 		println("true Qnew:")
+
+		//start = time.Now()
 		Agt.Learn(obs, act, rwd, done, next_obs, keyTools, encryptedQtable)
+		//elapsed = time.Since(start)
+		//fmt.Printf("The function took %s to execute.\n", elapsed)
+
 		println("Q table:")
 		printEncryptedQtableForDebug(params, encoder, decryptor, encryptedQtable)
 
 		obs = next_obs
 
-		elapsed := time.Since(start)
-		fmt.Printf("The operation of %d took: %f[sec]\n", i, elapsed.Seconds())
+		//fmt.Printf("The operation of %d took: %f[sec]\n", i, elapsed.Seconds())
 	}
 
 	for key, _ := range Agt.QKey {
