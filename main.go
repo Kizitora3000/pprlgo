@@ -1,189 +1,27 @@
 package main
 
 import (
-	"fmt"
-	"pprlgo/qlearn"
-)
-
-func main() {
-	Nstep := 10000
-	CorridorEnv := qlearn.NewEnvironment()
-	Agt := qlearn.NewAgent()
-
-	obs := CorridorEnv.Reset()
-	for i := 0; i < Nstep; i++ {
-		act := Agt.SelectAction(obs)
-
-		rwd, done, next_obs := CorridorEnv.Step(act)
-
-		Agt.Learn(obs, act, rwd, done, next_obs)
-
-		obs = next_obs
-	}
-
-	for key, values := range Agt.Q {
-		fmt.Printf("Key: %s, Values: %v\n", key, values)
-	}
-
-}
-
-/*
-package main
-
-import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
 	"pprlgo/doublenc"
 	"pprlgo/party"
+	"pprlgo/qlearn"
+	"time"
 
 	"github.com/tuneinsight/lattigo/v4/ckks"
 	"github.com/tuneinsight/lattigo/v4/rlwe"
 )
 
-var (
-	user party.User = party.User{
-		Actions: []float64{0.1, 0.2, 0.3, 0.4},
-		States:  []float64{1.0, 2.0, 3.0},
-		Alpha:   0.5,
-		Gamma:   0.9,
-		Qtable: [][]float64{
-			{0.1, 0.2, 0.3, 0.4},
-			{0.5, 0.6, 0.7, 0.8},
-			{0.9, 1.0, 1.1, 1.2},
-		},
-	}
-	cloud_platform party.CloudPlatform = party.CloudPlatform{
-		Qtable: [][]float64{
-			{0.1, 0.2, 0.3, 0.4},
-			{0.5, 0.6, 0.7, 0.8},
-			{0.9, 1.0, 1.1, 1.2},
-		},
-	}
-	EncryptedQtable []*rlwe.Ciphertext
-)
-
-func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encryptor rlwe.Encryptor, decryptor rlwe.Decryptor, evaluator ckks.Evaluator, publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey, v_t []float64, w_t []float64, Q_new float64) {
-	WtName := "WtName"
-	VtName := "VtName"
-
-	doublenc.DEenc(params, encoder, encryptor, publicKey, w_t, WtName)
-
-	for i := 0; i < len(cloud_platform.Qtable); i++ {
-		filename := fmt.Sprintf(VtName+"_%d", i)
-		if v_t[i] == 0 {
-			zeros := make([]float64, len(cloud_platform.Qtable[i]))
-			doublenc.DEenc(params, encoder, encryptor, publicKey, zeros, filename)
-		} else if v_t[i] == 1 {
-			ones := make([]float64, len(cloud_platform.Qtable[i]))
-			for i := range ones {
-				ones[i] = 1
-			}
-			doublenc.DEenc(params, encoder, encryptor, publicKey, ones, filename)
-		}
-	}
-
-	Q_news := make([]float64, len(cloud_platform.Qtable[0]))
-	Q_news_name := "Q_news_name"
-	for i := range Q_news {
-		Q_news[i] = Q_new
-	}
-	doublenc.DEenc(params, encoder, encryptor, publicKey, Q_news, Q_news_name)
-
-	// v_and_w = Vt[i] * Wt
-	// Qtable[i] += Q_new * (v_and_w) - Qtable[i] * (v_and_w)
-	fhe_Q_news := doublenc.RSAdec(privateKey, Q_news_name)
-	for i := 0; i < len(cloud_platform.Qtable); i++ {
-		filename := fmt.Sprintf(VtName+"_%d", i)
-		fhe_v_t := doublenc.RSAdec(privateKey, filename)
-		fhe_w_t := doublenc.RSAdec(privateKey, WtName)
-
-		// make Qnew
-		v_and_w_Qnew := make([]float64, len(cloud_platform.Qtable[i]))
-		fhe_v_and_w_Qnew := doublenc.FHEenc(params, encoder, encryptor, v_and_w_Qnew)
-		evaluator.Mul(fhe_v_t, fhe_w_t, fhe_v_and_w_Qnew)
-		evaluator.Relinearize(fhe_v_and_w_Qnew, fhe_v_and_w_Qnew)
-		evaluator.Mul(fhe_v_and_w_Qnew, fhe_Q_news, fhe_v_and_w_Qnew)
-
-		// make Qold
-		v_and_w_Qold := make([]float64, len(cloud_platform.Qtable[i]))
-		fhe_v_and_w_Qold := doublenc.FHEenc(params, encoder, encryptor, v_and_w_Qold)
-		evaluator.Mul(fhe_v_t, fhe_w_t, fhe_v_and_w_Qold)
-		evaluator.Relinearize(fhe_v_and_w_Qold, fhe_v_and_w_Qold)
-		evaluator.Mul(fhe_v_and_w_Qold, EncryptedQtable[i], fhe_v_and_w_Qold)
-
-		evaluator.Relinearize(fhe_v_and_w_Qnew, fhe_v_and_w_Qnew)
-		evaluator.Relinearize(fhe_v_and_w_Qold, fhe_v_and_w_Qold)
-
-		decrypt_fhe_v_and_w_Qnew := doublenc.FHEdec(params, encoder, decryptor, fhe_v_and_w_Qnew)
-		realValues1 := make([]float64, len(decrypt_fhe_v_and_w_Qnew))
-		for i, v := range decrypt_fhe_v_and_w_Qnew {
-			realValues1[i] = real(v)
-		}
-		re_fhe_v_and_w_Qnew := doublenc.FHEenc(params, encoder, encryptor, realValues1)
-
-		decrypt_fhe_v_and_w_Qold := doublenc.FHEdec(params, encoder, decryptor, fhe_v_and_w_Qold)
-		realValues2 := make([]float64, len(decrypt_fhe_v_and_w_Qold))
-		for i, v := range decrypt_fhe_v_and_w_Qold {
-			realValues2[i] = real(v)
-		}
-		re_fhe_v_and_w_Qold := doublenc.FHEenc(params, encoder, encryptor, realValues2)
-
-		// EncryptedQtalbe[i]がノイズで爆発する
-		evaluator.Add(EncryptedQtable[i], re_fhe_v_and_w_Qnew, EncryptedQtable[i])
-		evaluator.Sub(EncryptedQtable[i], re_fhe_v_and_w_Qold, EncryptedQtable[i])
-	}
-}
-
-func SecureActionSelection(params ckks.Parameters, encoder ckks.Encoder, encryptor rlwe.Encryptor, decryptor rlwe.Decryptor, evaluator ckks.Evaluator, publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey, v_t []float64, filename string) {
-	VtName := "VtName"
-
-	// 準同型演算のために縦行列を横に拡張する
-	//[0,		[0, 0, 0, 0]
-	// 1, ->  [1, 1, 1, 1]
-	// 0]		[0, 0, 0, 0]
-
-	for i := 0; i < len(cloud_platform.Qtable); i++ {
-		filename := fmt.Sprintf(VtName+"_%d", i)
-		if v_t[i] == 0 {
-			zeros := make([]float64, len(cloud_platform.Qtable[i]))
-			doublenc.DEenc(params, encoder, encryptor, publicKey, zeros, filename)
-		} else if v_t[i] == 1 {
-			ones := make([]float64, len(cloud_platform.Qtable[i]))
-			for i := range ones {
-				ones[i] = 1
-			}
-			doublenc.DEenc(params, encoder, encryptor, publicKey, ones, filename)
-		}
-	}
-
-	zeros := make([]float64, len(cloud_platform.Qtable[0]))
-	result := doublenc.FHEenc(params, encoder, encryptor, zeros)
-	for i := 0; i < len(cloud_platform.Qtable); i++ {
-		filename := fmt.Sprintf(VtName+"_%d", i)
-		vt := doublenc.RSAdec(privateKey, filename)
-		evaluator.Mul(vt, EncryptedQtable[i], vt)
-
-		// The multiplicable depth is one, so Relinearize is used to reset depth.
-		evaluator.Relinearize(vt, vt)
-		evaluator.Add(result, vt, result)
-	}
-
-	doublenc.RSAenc(publicKey, result, filename)
-	return
-}
+var EncryptedQtable []*rlwe.Ciphertext
 
 func main() {
-
-	fmt.Println(user)
-	fmt.Println(cloud_platform)
-
 	params, err := ckks.NewParametersFromLiteral(
 		ckks.ParametersLiteral{
 			LogN:         14,
 			LogQ:         []int{55, 40, 40, 40, 40, 40, 40, 40},
 			LogP:         []int{45, 45},
-			LogSlots:     2,
+			LogSlots:     1,
 			DefaultScale: 1 << 40,
 		})
 	if err != nil {
@@ -200,31 +38,56 @@ func main() {
 	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 	publicKey := &privateKey.PublicKey
 
-	// encrypt Qtalbe in CP
-	var encrypted_Qtable []*rlwe.Ciphertext
-	for _, row := range cloud_platform.Qtable {
-		ciphertext := doublenc.FHEenc(params, encoder, encryptor, row)
-		encrypted_Qtable = append(encrypted_Qtable, ciphertext)
+	keyTools := party.KeyTools{
+		Params:     params,
+		Encryptor:  encryptor,
+		Decryptor:  decryptor,
+		Encoder:    encoder,
+		Evaluator:  evaluator,
+		PrivateKey: privateKey,
+		PublicKey:  publicKey,
 	}
-	EncryptedQtable = encrypted_Qtable
 
-	v_t := []float64{0, 1, 0}
-	v_t_name := "v_t"
-	SecureActionSelection(params, encoder, encryptor, decryptor, evaluator, publicKey, privateKey, v_t, v_t_name)
-	fmt.Println(doublenc.DEdec(params, encoder, decryptor, privateKey, v_t_name))
+	Nstep := 5000
+	CorridorEnv := qlearn.NewEnvironment()
+	Agt := qlearn.NewAgent()
 
-	w_t := []float64{0, 0, 1, 0}
-	Q_new := float64(3.5)
+	obs := CorridorEnv.Reset()
+	Agt.Reset()
 
-	println("--- previous ---")
-	printEncryptedQtableForDebug(params, encoder, decryptor)
-	SecureQtableUpdating(params, encoder, encryptor, decryptor, evaluator, publicKey, privateKey, v_t, w_t, Q_new)
-	println("--- present ---")
-	printEncryptedQtableForDebug(params, encoder, decryptor)
+	var encryptedQtable []*rlwe.Ciphertext
+	for i := 0; i < Agt.LenQ; i++ {
+		ciphertext := doublenc.FHEenc(params, encoder, encryptor, Agt.Q[i])
+		encryptedQtable = append(encryptedQtable, ciphertext)
+	}
+
+	for i := 0; i < Nstep; i++ {
+		start := time.Now()
+		fmt.Printf("───── %d ─────\n", i)
+
+		println("Q candidates:")
+		act := Agt.SelectAction(obs, keyTools, encryptedQtable)
+
+		rwd, done, next_obs := CorridorEnv.Step(act)
+
+		println("true Qnew:")
+		Agt.Learn(obs, act, rwd, done, next_obs, keyTools, encryptedQtable)
+		println("Q table:")
+		printEncryptedQtableForDebug(params, encoder, decryptor, encryptedQtable)
+
+		obs = next_obs
+
+		elapsed := time.Since(start)
+		fmt.Printf("The operation of %d took: %f[sec]\n", i, elapsed.Seconds())
+	}
+
+	for key, _ := range Agt.QKey {
+		fmt.Printf("%s: %f\n", key, Agt.Q[Agt.QKey[key]])
+	}
 }
 
-func printEncryptedQtableForDebug(params ckks.Parameters, encoder ckks.Encoder, decryptor rlwe.Decryptor) {
-	for i, row := range EncryptedQtable {
+func printEncryptedQtableForDebug(params ckks.Parameters, encoder ckks.Encoder, decryptor rlwe.Decryptor, encryptedQtable []*rlwe.Ciphertext) {
+	for i, row := range encryptedQtable {
 		decryptedRow := doublenc.FHEdec(params, encoder, decryptor, row)
 		fmt.Printf("Decrypted Qtable Row %d: ", i)
 		for _, val := range decryptedRow {
@@ -233,4 +96,3 @@ func printEncryptedQtableForDebug(params ckks.Parameters, encoder ckks.Encoder, 
 		fmt.Println()
 	}
 }
-*/
