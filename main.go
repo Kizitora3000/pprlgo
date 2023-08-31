@@ -7,6 +7,7 @@ import (
 	"pprlgo/doublenc"
 	"pprlgo/party"
 	"pprlgo/qlearn"
+	"time"
 
 	"github.com/tuneinsight/lattigo/v4/ckks"
 	"github.com/tuneinsight/lattigo/v4/rlwe"
@@ -17,12 +18,19 @@ var EncryptedQtable []*rlwe.Ciphertext
 func main() {
 	params, err := ckks.NewParametersFromLiteral(
 		ckks.ParametersLiteral{
-			LogN:         12, // 14
-			LogQ:         []int{55, 40, 40, 40, 40, 40, 40, 40},
+			LogN:         13,                // 13
+			LogQ:         []int{35, 60, 60}, // []int{55, 40, 40},
 			LogP:         []int{45, 45},
 			LogSlots:     1,
-			DefaultScale: 1 << 40,
+			DefaultScale: 1 << 30,
 		})
+	/*
+		LogN:         13,                // 13
+		LogQ:         []int{35, 60, 60}, // []int{55, 40, 40},
+		LogP:         []int{45, 45},
+		LogSlots:     1,
+		DefaultScale: 1 << 30,
+	*/
 	if err != nil {
 		panic(err)
 	}
@@ -61,6 +69,7 @@ func main() {
 	}
 
 	for i := 0; i < Nstep; i++ {
+		start := time.Now()
 		fmt.Printf("───── %d ─────\n", i)
 
 		println("Q candidates:")
@@ -84,7 +93,8 @@ func main() {
 
 		obs = next_obs
 
-		//fmt.Printf("The operation of %d took: %f[sec]\n", i, elapsed.Seconds())
+		elapsed := time.Since(start)
+		fmt.Printf("The operation of %d took: %f[sec]\n", i, elapsed.Seconds())
 	}
 
 	for key, _ := range Agt.QKey {
