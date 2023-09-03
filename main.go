@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"fmt"
+	"os"
 	"pprlgo/doublenc"
 	"pprlgo/party"
 	"pprlgo/qlearn"
@@ -55,7 +56,7 @@ func main() {
 		PublicKey:  publicKey,
 	}
 
-	Nstep := 10000
+	Nstep := 50000
 	CorridorEnv := qlearn.NewEnvironment()
 	Agt := qlearn.NewAgent()
 
@@ -68,30 +69,50 @@ func main() {
 		encryptedQtable = append(encryptedQtable, ciphertext)
 	}
 
+	// ---
+	all_trial := 0.0
+	num_success := 0.0
+
+	file, err := os.Create("result.txt")
+	if err != nil {
+		fmt.Println("Error:", err)
+		return
+	}
+	defer file.Close()
+	// ---
+
 	for i := 0; i < Nstep; i++ {
 		start := time.Now()
 		fmt.Printf("───── %d ─────\n", i)
 
 		println("Q candidates:")
 
-		//start := time.Now()
 		act := Agt.SelectAction(obs, keyTools, encryptedQtable)
-		//elapsed := time.Since(start)
-		//fmt.Printf("The function took %s to execute.\n", elapsed)
 
 		rwd, done, next_obs := CorridorEnv.Step(act)
 
 		println("true Qnew:")
 
-		//start = time.Now()
 		Agt.Learn(obs, act, rwd, done, next_obs, keyTools, encryptedQtable)
-		//elapsed = time.Since(start)
-		//fmt.Printf("The function took %s to execute.\n", elapsed)
 
 		println("Q table:")
 		printEncryptedQtableForDebug(params, encoder, decryptor, encryptedQtable)
 
 		obs = next_obs
+
+		if done {
+			if rwd == 5 {
+				num_success++
+			}
+			all_trial++
+			//fmt.Printf("%f, %f, %f\n", num_success, all_trial, num_success/all_trial)
+			_, err = fmt.Fprintf(file, "%f,%f\n", all_trial, num_success/all_trial)
+
+			if err != nil {
+				fmt.Println("Error:", err)
+				return
+			}
+		}
 
 		elapsed := time.Since(start)
 		fmt.Printf("The operation of %d took: %f[sec]\n", i, elapsed.Seconds())
