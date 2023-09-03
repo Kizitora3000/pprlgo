@@ -18,7 +18,7 @@ var EncryptedQtable []*rlwe.Ciphertext
 func main() {
 	params, err := ckks.NewParametersFromLiteral(
 		ckks.ParametersLiteral{
-			LogN:         13,                // 13
+			LogN:         4,                 // 13
 			LogQ:         []int{35, 60, 60}, // []int{55, 40, 40},
 			LogP:         []int{45, 45},
 			LogSlots:     1,
@@ -55,7 +55,7 @@ func main() {
 		PublicKey:  publicKey,
 	}
 
-	Nstep := 5000
+	Nstep := 10000
 	CorridorEnv := qlearn.NewEnvironment()
 	Agt := qlearn.NewAgent()
 
