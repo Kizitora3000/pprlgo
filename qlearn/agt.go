@@ -30,34 +30,22 @@ func NewAgent() *Agent {
 		Epsilon:  0.1,
 		Alpha:    0.1,
 		Gamma:    0.9,
-		Q: [][]float64{
-			[]float64{-1.000000, 2.150000},
-			[]float64{-1.000000, 3.500000},
-			[]float64{4.999999, -1.899997},
-			[]float64{-0.999997, -0.999999},
-			[]float64{-1.000000, 0.935000},
-			[]float64{-1.000000, 2.150001},
-			[]float64{-1.000000, 3.500001},
-			[]float64{5.000002, -1.000000},
-			[]float64{0.285883, 0.589244},
-		},
-		QKey: map[string]int{},
-		LenQ: 0,
+		Q:        [][]float64{},
+		QKey:     map[string]int{},
+		LenQ:     0,
 	}
 }
 
 func (e *Agent) Reset() {
 	e.LenQ = 9
 
-	/*
-		e.Q = make([][]float64, e.LenQ)
-		for i := 0; i < e.LenQ; i++ {
-			e.Q[i] = make([]float64, e.Nact)
-			for j := 0; j < e.Nact; j++ {
-				e.Q[i][j] = e.InitValQ
-			}
+	e.Q = make([][]float64, e.LenQ)
+	for i := 0; i < e.LenQ; i++ {
+		e.Q[i] = make([]float64, e.Nact)
+		for j := 0; j < e.Nact; j++ {
+			e.Q[i][j] = e.InitValQ
 		}
-	*/
+	}
 
 	e.QKey["1,0,2,0"] = 0
 	e.QKey["0,1,2,0"] = 1
