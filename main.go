@@ -57,15 +57,23 @@ func main() {
 	}
 
 	Nstep := 50000
-	CorridorEnv := qlearn.NewEnvironment()
-	Agt := qlearn.NewAgent()
 
-	obs := CorridorEnv.Reset()
-	Agt.Reset()
+	numInstances := 4
+	CorridorEnvs := make([]*qlearn.Environment, numInstances)
+	Agents := make([]*qlearn.Agent, numInstances)
+	obs := make([][]int, numInstances)
 
+	for i := 0; i < numInstances; i++ {
+		CorridorEnvs[i] = qlearn.NewEnvironment()
+		Agents[i] = qlearn.NewAgent()
+		obs[i] = CorridorEnvs[i].Reset()
+		Agents[i].Reset()
+	}
+
+	// クラウドのQ値は最初のエージェントで初期化(全エージェント共通)
 	var encryptedQtable []*rlwe.Ciphertext
-	for i := 0; i < Agt.LenQ; i++ {
-		ciphertext := doublenc.FHEenc(params, encoder, encryptor, Agt.Q[i])
+	for i := 0; i < Agents[0].LenQ; i++ {
+		ciphertext := doublenc.FHEenc(params, encoder, encryptor, Agents[0].Q[i])
 		encryptedQtable = append(encryptedQtable, ciphertext)
 	}
 
@@ -87,30 +95,32 @@ func main() {
 
 		println("Q candidates:")
 
-		act := Agt.SelectAction(obs, keyTools, encryptedQtable)
+		for j := 0; j < 1; j++ {
+			act := Agents[j].SelectAction(obs[j], keyTools, encryptedQtable)
 
-		rwd, done, next_obs := CorridorEnv.Step(act)
+			rwd, done, next_obs := CorridorEnvs[j].Step(act)
 
-		println("true Qnew:")
+			println("true Qnew:")
 
-		Agt.Learn(obs, act, rwd, done, next_obs, keyTools, encryptedQtable)
+			Agents[j].Learn(obs[j], act, rwd, done, next_obs, keyTools, encryptedQtable)
 
-		println("Q table:")
-		printEncryptedQtableForDebug(params, encoder, decryptor, encryptedQtable)
+			println("Q table:")
+			printEncryptedQtableForDebug(params, encoder, decryptor, encryptedQtable)
 
-		obs = next_obs
+			obs[j] = next_obs
 
-		if done {
-			if rwd == 5 {
-				num_success++
-			}
-			all_trial++
-			//fmt.Printf("%f, %f, %f\n", num_success, all_trial, num_success/all_trial)
-			_, err = fmt.Fprintf(file, "%f,%f\n", all_trial, num_success/all_trial)
+			if done {
+				if rwd == 5 {
+					num_success++
+				}
+				all_trial++
+				//fmt.Printf("%f, %f, %f\n", num_success, all_trial, num_success/all_trial)
+				_, err = fmt.Fprintf(file, "%f,%f\n", all_trial, num_success/all_trial)
 
-			if err != nil {
-				fmt.Println("Error:", err)
-				return
+				if err != nil {
+					fmt.Println("Error:", err)
+					return
+				}
 			}
 		}
 
@@ -118,8 +128,10 @@ func main() {
 		fmt.Printf("The operation of %d took: %f[sec]\n", i, elapsed.Seconds())
 	}
 
-	for key, _ := range Agt.QKey {
-		fmt.Printf("%s: %f\n", key, Agt.Q[Agt.QKey[key]])
+	for i := 0; i < 4; i++ {
+		for key, _ := range Agents[i].QKey {
+			fmt.Printf("%s: %f\n", key, Agents[i].Q[Agents[i].QKey[key]])
+		}
 	}
 }
 

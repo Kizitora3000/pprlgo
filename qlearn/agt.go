@@ -75,6 +75,8 @@ func (e *Agent) SelectAction(obs []int, keyTools party.KeyTools, encryptedQtable
 		QsFloat64[i] = real(v)
 	}
 
+	e.Q[obsIdx] = QsFloat64
+
 	if rand.Float64() < e.Epsilon {
 		act = rand.Intn(e.Nact)
 	} else {
