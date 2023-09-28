@@ -13,6 +13,7 @@ func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encrypto
 	WtName := "WtName"
 	VtName := "VtName"
 
+	//start := time.Now()
 	doublenc.DEenc(params, encoder, encryptor, publicKey, w_t, WtName)
 
 	for i := 0; i < Nv; i++ {
@@ -35,6 +36,11 @@ func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encrypto
 		Q_news[i] = Q_new
 	}
 	doublenc.DEenc(params, encoder, encryptor, publicKey, Q_news, Q_news_name)
+
+	//elapsed := time.Since(start)
+	//fmt.Printf("The function took %s to execute.\n", elapsed)
+
+	//start = time.Now()
 
 	// v_and_w = Vt[i] * Wt
 	// Qtable[i] += Q_new * (v_and_w) - Qtable[i] * (v_and_w)
@@ -79,6 +85,9 @@ func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encrypto
 		evaluator.Add(EncryptedQtable[i], re_fhe_v_and_w_Qnew, EncryptedQtable[i])
 		evaluator.Sub(EncryptedQtable[i], re_fhe_v_and_w_Qold, EncryptedQtable[i])
 	}
+
+	//elapsed = time.Since(start)
+	//fmt.Printf("The function took %s to execute.\n", elapsed)
 }
 
 func SecureActionSelection(params ckks.Parameters, encoder ckks.Encoder, encryptor rlwe.Encryptor, decryptor rlwe.Decryptor, evaluator ckks.Evaluator, publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey, v_t []float64, Nv int, Na int, filename string, EncryptedQtable []*rlwe.Ciphertext) {

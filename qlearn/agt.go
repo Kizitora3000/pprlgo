@@ -27,7 +27,7 @@ func NewAgent() *Agent {
 	return &Agent{
 		Nact:     2,
 		InitValQ: 0,
-		Epsilon:  1.0,
+		Epsilon:  0.1,
 		Alpha:    0.1,
 		Gamma:    0.9,
 		Q:        [][]float64{},
@@ -71,11 +71,11 @@ func (e *Agent) SelectAction(obs []int, keyTools party.KeyTools, encryptedQtable
 	Qs := doublenc.DEdec(keyTools.Params, keyTools.Encoder, keyTools.Decryptor, keyTools.PrivateKey, v_t_name)
 	QsFloat64 := make([]float64, len(Qs))
 
-	fmt.Println(QsFloat64)
-
 	for i, v := range Qs {
 		QsFloat64[i] = real(v)
 	}
+
+	e.Q[obsIdx] = QsFloat64
 
 	if rand.Float64() < e.Epsilon {
 		act = rand.Intn(e.Nact)
@@ -83,6 +83,7 @@ func (e *Agent) SelectAction(obs []int, keyTools party.KeyTools, encryptedQtable
 		act = maxIdx(QsFloat64)
 	}
 
+	fmt.Println(QsFloat64)
 	return act
 }
 
