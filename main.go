@@ -1,64 +1,63 @@
 package main
 
 import (
+	"crypto/rand"
+	"crypto/rsa"
 	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"math"
 	"os"
 	"path/filepath"
 	"pprlgo/doublenc"
+	"pprlgo/party"
 	"pprlgo/qlearn"
 	"strconv"
+	"time"
 
 	"github.com/tuneinsight/lattigo/v4/ckks"
 	"github.com/tuneinsight/lattigo/v4/rlwe"
 )
 
-var EncryptedQtable []*rlwe.Ciphertext
-
 func main() {
-
-	/*
-		params, err := ckks.NewParametersFromLiteral(
-			ckks.ParametersLiteral{
-				LogN:         4,
-				LogQ:         []int{35, 60, 60},
-				LogP:         []int{45, 45},
-				LogSlots:     1,
-				DefaultScale: 1 << 30,
-			})
-		/* security level 128
-		LogN:         13,                // 13
-		LogQ:         []int{35, 60, 60}, // []int{55, 40, 40},
-		LogP:         []int{45, 45},
-		LogSlots:     1,
-		DefaultScale: 1 << 30,
-		if err != nil {
-			panic(err)
-		}
-
-		kgen := ckks.NewKeyGenerator(params)
-		sk := kgen.GenSecretKey()
-		encryptor := ckks.NewEncryptor(params, sk)
-		decryptor := ckks.NewDecryptor(params, sk)
-		encoder := ckks.NewEncoder(params)
-		rlk := kgen.GenRelinearizationKey(sk, 1)
-		evaluator := ckks.NewEvaluator(params, rlwe.EvaluationKey{Rlk: rlk})
-		privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
-		publicKey := &privateKey.PublicKey
-
-		keyTools := party.KeyTools{
-			Params:     params,
-			Encryptor:  encryptor,
-			Decryptor:  decryptor,
-			Encoder:    encoder,
-			Evaluator:  evaluator,
-			PrivateKey: privateKey,
-			PublicKey:  publicKey,
-		}
+	params, err := ckks.NewParametersFromLiteral(
+		ckks.ParametersLiteral{
+			LogN:         7,
+			LogQ:         []int{35, 60, 60},
+			LogP:         []int{45, 45},
+			LogSlots:     6,
+			DefaultScale: 1 << 30,
+		})
+	/* security level 128
+	LogN:         13,                // 13
+	LogQ:         []int{35, 60, 60}, // []int{55, 40, 40},
+	LogP:         []int{45, 45},
+	LogSlots:     1,
+	DefaultScale: 1 << 30,
 	*/
+	if err != nil {
+		panic(err)
+	}
+
+	kgen := ckks.NewKeyGenerator(params)
+	sk := kgen.GenSecretKey()
+	encryptor := ckks.NewEncryptor(params, sk)
+	decryptor := ckks.NewDecryptor(params, sk)
+	encoder := ckks.NewEncoder(params)
+	rlk := kgen.GenRelinearizationKey(sk, 1)
+	evaluator := ckks.NewEvaluator(params, rlwe.EvaluationKey{Rlk: rlk})
+	privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	publicKey := &privateKey.PublicKey
+
+	keyTools := party.KeyTools{
+		Params:     params,
+		Encryptor:  encryptor,
+		Decryptor:  decryptor,
+		Encoder:    encoder,
+		Evaluator:  evaluator,
+		PrivateKey: privateKey,
+		PublicKey:  publicKey,
+	}
 
 	Agt := qlearn.NewAgent()
 
@@ -69,8 +68,21 @@ func main() {
 		panic(err)
 	}
 
-	mx_status := 0.0
+	// クラウドのQ値を初期化
+	var encryptedQtable []*rlwe.Ciphertext
+	mx_status := 502
+	for i := 0; i < mx_status; i++ {
+		plaintext := make([]float64, Agt.Nact)
+		for i := range plaintext {
+			plaintext[i] = Agt.InitValQ
+		}
+
+		ciphertext := doublenc.FHEenc(params, encoder, encryptor, plaintext)
+		encryptedQtable = append(encryptedQtable, ciphertext)
+	}
+
 	for _, file := range files {
+		fmt.Println(file)
 		filename := filepath.Join(dirname, file.Name())
 		file, err := os.Open(filename)
 
@@ -90,34 +102,36 @@ func main() {
 
 		// Exclude the last row
 		records = records[:len(records)-1]
+		var totalDuration time.Duration
 
-		for _, record := range records {
+		for i, record := range records {
+			fmt.Println(i)
+			startTime := time.Now()
+
 			status, _ := strconv.Atoi(record[1])
 			action, _ := strconv.Atoi(record[2])
 			rwd, _ := strconv.ParseFloat(record[3], 64)
 			next_status, _ := strconv.Atoi(record[4])
-			mx_status = math.Max(mx_status, float64(status))
 
-			Agt.Learn(status, action, rwd, next_status)
+			Agt.Learn(status, action, rwd, next_status, keyTools, encryptedQtable)
+
+			duration := time.Since(startTime)
+			totalDuration += duration
+			fmt.Println(duration) // 平均時間を計算
+
 		}
+		break
 	}
 
-	/*
-		for key, values := range Agt.Q {
-			fmt.Printf("Key: %s, Values: %v\n", key, values)
-		}
-	*/
+	Qtable := [][]float64{}
+	for i := 0; i < mx_status; i++ {
+		plaintext := doublenc.FHEdec(params, encoder, decryptor, encryptedQtable[i])
 
-	// mx_status × Nact
-	Qtable := make([][]float64, int(mx_status))
-	for i := range Qtable {
-		Qtable[i] = make([]float64, Agt.Nact)
-		for j := range Qtable[i] {
-			Qtable[i][j] = Agt.InitValQ
+		plaintext_real := []float64{}
+		for i, v := range plaintext {
+			plaintext_real[i] = real(v)
 		}
-		if _, isExist := Agt.Q[i]; isExist {
-			Qtable[i] = Agt.Q[i]
-		}
+		Qtable = append(Qtable, plaintext_real)
 	}
 
 	jsonData, err := json.Marshal(Qtable)
@@ -126,7 +140,7 @@ func main() {
 		return
 	}
 
-	err = ioutil.WriteFile("data.json", jsonData, 0644)
+	err = ioutil.WriteFile("pprl_data.json", jsonData, 0644)
 	if err != nil {
 		fmt.Println(err)
 	}
