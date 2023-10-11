@@ -41,7 +41,7 @@ func (e *Agent) Learn(s int, act int, rwd float64, next_s int, keyTools party.Ke
 	e.Q[s][act] = (1-e.Alpha)*e.Q[s][act] + e.Alpha*target
 
 	Qnew := e.Q[s][act]
-	v_t := make([]float64, 502) // マジックナンバー とりあえずUCIのデータセットの血糖値は最大で501
+	v_t := make([]float64, e.LenQ) // マジックナンバー とりあえずUCIのデータセットの血糖値は最大で501
 	w_t := make([]float64, e.Nact)
 	v_t[s] = 1
 	w_t[act] = 1

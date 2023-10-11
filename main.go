@@ -60,6 +60,7 @@ func main() {
 	}
 
 	Agt := qlearn.NewAgent()
+	Agt.LenQ = 502
 
 	dirname := "./proprocessed_diabetes_dataset"
 
@@ -70,7 +71,7 @@ func main() {
 
 	// クラウドのQ値を初期化
 	var encryptedQtable []*rlwe.Ciphertext
-	mx_status := 502
+	mx_status := Agt.LenQ
 	for i := 0; i < mx_status; i++ {
 		plaintext := make([]float64, Agt.Nact)
 		for i := range plaintext {

@@ -13,7 +13,7 @@ import (
 func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encryptor rlwe.Encryptor, decryptor rlwe.Decryptor, evaluator ckks.Evaluator, publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey, v_t []float64, w_t []float64, Q_new float64, Nv int, Na int, EncryptedQtable []*rlwe.Ciphertext) {
 	WtName := "WtName"
 	VtName := "VtName"
-	fmt.Println(Nv)
+
 	//start := time.Now()
 	doublenc.DEenc(params, encoder, encryptor, publicKey, w_t, WtName)
 
