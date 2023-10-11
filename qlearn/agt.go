@@ -76,7 +76,7 @@ func (e *Agent) checkAndAddObservation(s int) {
 		for i := 0; i < e.Nact; i++ {
 			e.Q[s][i] = e.InitValQ
 		}
-		e.LenQ++
+		// e.LenQ++
 	}
 }
 
