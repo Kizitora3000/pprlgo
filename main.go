@@ -29,11 +29,14 @@ func main() {
 			DefaultScale: 1 << 30,
 		})
 	/* security level 128
+	params, err := ckks.NewParametersFromLiteral(
+		ckks.ParametersLiteral{
 	LogN:         13,                // 13
 	LogQ:         []int{35, 60, 60}, // []int{55, 40, 40},
 	LogP:         []int{45, 45},
 	LogSlots:     1,
 	DefaultScale: 1 << 30,
+	})
 	*/
 	if err != nil {
 		panic(err)
@@ -70,16 +73,17 @@ func main() {
 	}
 
 	// クラウドのQ値を初期化
-	var encryptedQtable []*rlwe.Ciphertext
-	mx_status := Agt.LenQ
-	for i := 0; i < mx_status; i++ {
+	encryptedQtable := make([]*rlwe.Ciphertext, Agt.LenQ)
+	for i := 0; i < Agt.LenQ; i++ {
 		plaintext := make([]float64, Agt.Nact)
 		for i := range plaintext {
 			plaintext[i] = Agt.InitValQ
 		}
 
 		ciphertext := doublenc.FHEenc(params, encoder, encryptor, plaintext)
-		encryptedQtable = append(encryptedQtable, ciphertext)
+		//hoge := doublenc.FHEdec(params, encoder, decryptor, ciphertext)
+		//fmt.Println(len(hoge))
+		encryptedQtable[i] = ciphertext
 	}
 
 	for _, file := range files {
@@ -106,7 +110,6 @@ func main() {
 		var totalDuration time.Duration
 
 		for i, record := range records {
-			fmt.Println(i)
 			startTime := time.Now()
 
 			status, _ := strconv.Atoi(record[1])
@@ -118,19 +121,22 @@ func main() {
 
 			duration := time.Since(startTime)
 			totalDuration += duration
-			fmt.Println(duration) // 平均時間を計算
+			// fmt.Println(duration) // 平均時間を計算
+			fmt.Printf("file: %s\tindex:%d\ttime:%s\n", file.Name(), i, duration)
 
 		}
-		break
 	}
 
 	Qtable := [][]float64{}
-	for i := 0; i < mx_status; i++ {
+	for i := 0; i < Agt.LenQ; i++ {
 		plaintext := doublenc.FHEdec(params, encoder, decryptor, encryptedQtable[i])
 
-		plaintext_real := []float64{}
-		for i, v := range plaintext {
-			plaintext_real[i] = real(v)
+		plaintext_real := make([]float64, Agt.Nact)
+		for j, v := range plaintext {
+			if j == Agt.Nact {
+				continue
+			}
+			plaintext_real[j] = real(v)
 		}
 		Qtable = append(Qtable, plaintext_real)
 	}
