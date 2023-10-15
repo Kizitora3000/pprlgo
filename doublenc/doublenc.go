@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/tuneinsight/lattigo/v4/ckks"
 	"github.com/tuneinsight/lattigo/v4/rlwe"
@@ -107,7 +108,6 @@ func RSAenc(publicKey *rsa.PublicKey, fhe_ciphetext *rlwe.Ciphertext, filename s
 }
 
 func RSAdec(privateKey *rsa.PrivateKey, filename string) *rlwe.Ciphertext {
-	// check whether the directory exists
 	dir_path := "doublenc/output/rsa_" + filename
 
 	dir_content, err := os.ReadDir(dir_path)
@@ -116,21 +116,35 @@ func RSAdec(privateKey *rsa.PrivateKey, filename string) *rlwe.Ciphertext {
 		os.Exit(1)
 	}
 
-	fhe_ciphertext_bytes := []byte{}
+	results := make([][]byte, len(dir_content))
+	var wg sync.WaitGroup
 
 	for i := 0; i < len(dir_content); i++ {
-		rsa_filename := fmt.Sprintf(dir_path+"/rsa_%s_%d.txt", filename, i+1)
-		splited_rsa_ciphertext, err := os.ReadFile(rsa_filename)
-		if err != nil {
-			panic(err)
-		}
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
 
-		splited_fhe_ciphertext, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, privateKey, splited_rsa_ciphertext, nil)
-		if err != nil {
-			panic(err)
-		}
+			rsa_filename := fmt.Sprintf(dir_path+"/rsa_%s_%d.txt", filename, i+1)
+			splited_rsa_ciphertext, err := os.ReadFile(rsa_filename)
+			if err != nil {
+				panic(err)
+			}
 
-		fhe_ciphertext_bytes = append(fhe_ciphertext_bytes, splited_fhe_ciphertext...)
+			splited_fhe_ciphertext, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, privateKey, splited_rsa_ciphertext, nil)
+			if err != nil {
+				panic(err)
+			}
+
+			results[i] = splited_fhe_ciphertext
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Combine results in order
+	fhe_ciphertext_bytes := []byte{}
+	for _, bytes := range results {
+		fhe_ciphertext_bytes = append(fhe_ciphertext_bytes, bytes...)
 	}
 
 	fhe_ciphertext := new(rlwe.Ciphertext)

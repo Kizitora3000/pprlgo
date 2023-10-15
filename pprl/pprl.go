@@ -62,6 +62,7 @@ func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encrypto
 		fhe_v_and_w_Qold := doublenc.FHEenc(params, encoder, encryptor, v_and_w_Qold)
 		evaluator.Mul(fhe_v_t, fhe_w_t, fhe_v_and_w_Qold)
 		evaluator.Relinearize(fhe_v_and_w_Qold, fhe_v_and_w_Qold)
+
 		evaluator.Mul(fhe_v_and_w_Qold, EncryptedQtable[i], fhe_v_and_w_Qold)
 
 		evaluator.Relinearize(fhe_v_and_w_Qnew, fhe_v_and_w_Qnew)
