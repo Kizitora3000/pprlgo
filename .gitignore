@@ -1,3 +1,4 @@
 doublenc/output/*
-proprocessed_diabetes_dataset/*
+preprocessed_diabetes_RL_dataset/*
+preprocessed_diabetes_SRL_dataset/*
 data.json

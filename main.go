@@ -65,7 +65,7 @@ func main() {
 	Agt := qlearn.NewAgent()
 	Agt.LenQ = 502
 
-	dirname := "./proprocessed_diabetes_dataset"
+	dirname := "./preprocessed_diabetes_SRL_dataset"
 
 	files, err := os.ReadDir(dirname)
 	if err != nil {
