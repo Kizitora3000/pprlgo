@@ -65,7 +65,7 @@ func main() {
 	Agt := qlearn.NewAgent()
 	Agt.LenQ = 502
 
-	dirname := "./preprocessed_diabetes_SRL_dataset"
+	dirname := "./preprocessed_diabetes_RL_dataset"
 
 	files, err := os.ReadDir(dirname)
 	if err != nil {
@@ -129,16 +129,14 @@ func main() {
 
 	Qtable := [][]float64{}
 	for i := 0; i < Agt.LenQ; i++ {
-		plaintext := doublenc.FHEdec(params, encoder, decryptor, encryptedQtable[i])
-
-		plaintext_real := make([]float64, Agt.Nact)
-		for j, v := range plaintext {
-			if j == Agt.Nact {
-				continue
+		if _, isExist := Agt.Q[i]; !isExist {
+			Agt.Q[i] = make([]float64, Agt.Nact)
+			for j := 0; j < Agt.Nact; j++ {
+				Agt.Q[i][j] = Agt.InitValQ
 			}
-			plaintext_real[j] = real(v)
 		}
-		Qtable = append(Qtable, plaintext_real)
+
+		Qtable = append(Qtable, Agt.Q[i])
 	}
 
 	jsonData, err := json.Marshal(Qtable)
@@ -147,100 +145,8 @@ func main() {
 		return
 	}
 
-	err = ioutil.WriteFile("pprl_data.json", jsonData, 0644)
+	err = ioutil.WriteFile("rl_data.json", jsonData, 0644)
 	if err != nil {
 		fmt.Println(err)
-	}
-
-	/*
-
-		Nstep := 50000
-
-		numInstances := 4
-		CorridorEnvs := make([]*qlearn.Environment, numInstances)
-		Agents := make([]*qlearn.Agent, numInstances)
-		obs := make([][]int, numInstances)
-
-		for i := 0; i < numInstances; i++ {
-			CorridorEnvs[i] = qlearn.NewEnvironment()
-			Agents[i] = qlearn.NewAgent()
-			obs[i] = CorridorEnvs[i].Reset()
-			Agents[i].Reset()
-		}
-
-		// クラウドのQ値は最初のエージェントで初期化(全エージェント共通)
-		var encryptedQtable []*rlwe.Ciphertext
-		for i := 0; i < Agents[0].LenQ; i++ {
-			ciphertext := doublenc.FHEenc(params, encoder, encryptor, Agents[0].Q[i])
-			encryptedQtable = append(encryptedQtable, ciphertext)
-		}
-
-		// ---
-		all_trial := 0.0
-		num_success := 0.0
-
-		file, err := os.Create("result.txt")
-		if err != nil {
-			fmt.Println("Error:", err)
-			return
-		}
-		defer file.Close()
-		// ---
-
-		for i := 0; i < Nstep; i++ {
-			start := time.Now()
-			fmt.Printf("───── %d ─────\n", i)
-
-			println("Q candidates:")
-
-			for j := 0; j < 1; j++ {
-				act := Agents[j].SelectAction(obs[j], keyTools, encryptedQtable)
-
-				rwd, done, next_obs := CorridorEnvs[j].Step(act)
-
-				println("true Qnew:")
-
-				Agents[j].Learn(obs[j], act, rwd, done, next_obs, keyTools, encryptedQtable)
-
-				println("Q table:")
-				printEncryptedQtableForDebug(params, encoder, decryptor, encryptedQtable)
-
-				obs[j] = next_obs
-
-				if done {
-					if rwd == 5 {
-						num_success++
-					}
-					all_trial++
-					//fmt.Printf("%f, %f, %f\n", num_success, all_trial, num_success/all_trial)
-					_, err = fmt.Fprintf(file, "%f,%f\n", all_trial, num_success/all_trial)
-
-					if err != nil {
-						fmt.Println("Error:", err)
-						return
-					}
-				}
-			}
-
-			elapsed := time.Since(start)
-			fmt.Printf("The operation of %d took: %f[sec]\n", i, elapsed.Seconds())
-		}
-
-		for i := 0; i < 4; i++ {
-			for key, _ := range Agents[i].QKey {
-				fmt.Printf("%s: %f\n", key, Agents[i].Q[Agents[i].QKey[key]])
-			}
-		}
-	*/
-}
-
-func printEncryptedQtableForDebug(params ckks.Parameters, encoder ckks.Encoder, decryptor rlwe.Decryptor, encryptedQtable []*rlwe.Ciphertext) {
-	for i, row := range encryptedQtable {
-		decryptedRow := doublenc.FHEdec(params, encoder, decryptor, row)
-		fmt.Printf("Decrypted Qtable Row %d: ", i)
-		for _, val := range decryptedRow {
-			fmt.Printf("%f, ", real(val))
-		}
-		fmt.Println()
 	}
 }

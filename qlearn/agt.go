@@ -2,7 +2,6 @@ package qlearn
 
 import (
 	"pprlgo/party"
-	"pprlgo/pprl"
 	"strconv"
 	"strings"
 
@@ -40,12 +39,12 @@ func (e *Agent) Learn(s int, act int, rwd float64, next_s int, keyTools party.Ke
 
 	e.Q[s][act] = (1-e.Alpha)*e.Q[s][act] + e.Alpha*target
 
-	Qnew := e.Q[s][act]
+	// Qnew := e.Q[s][act]
 	v_t := make([]float64, e.LenQ) // マジックナンバー とりあえずUCIのデータセットの血糖値は最大で501
 	w_t := make([]float64, e.Nact)
 	v_t[s] = 1
 	w_t[act] = 1
-	pprl.SecureQtableUpdating(keyTools.Params, keyTools.Encoder, keyTools.Encryptor, keyTools.Decryptor, keyTools.Evaluator, keyTools.PublicKey, keyTools.PrivateKey, v_t, w_t, Qnew, e.LenQ, e.Nact, encryptedQtable)
+	// pprl.SecureQtableUpdating(keyTools.Params, keyTools.Encoder, keyTools.Encryptor, keyTools.Decryptor, keyTools.Evaluator, keyTools.PublicKey, keyTools.PrivateKey, v_t, w_t, Qnew, e.LenQ, e.Nact, encryptedQtable)
 }
 
 func (e *Agent) GetQ(s int) []float64 {
