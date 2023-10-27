@@ -12,30 +12,44 @@ import (
 func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encryptor rlwe.Encryptor, decryptor rlwe.Decryptor, evaluator ckks.Evaluator, publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey, v_t []float64, w_t []float64, Q_new float64, Nv int, Na int, EncryptedQtable []*rlwe.Ciphertext) {
 	WtName := "WtName"
 	VtName := "VtName"
-
 	//start := time.Now()
-	doublenc.DEenc(params, encoder, encryptor, publicKey, w_t, WtName)
+	/*
+		rsa_ciphertext := doublenc.DEenc(params, encoder, encryptor, publicKey, w_t, WtName)
+		fhe_ciphertext := doublenc.RSAdec2(privateKey, rsa_ciphertext)
+		plaintext := encoder.Decode(decryptor.DecryptNew(fhe_ciphertext), params.LogSlots())
+		fmt.Println(w_t[1])
+		fmt.Println(plaintext[1])
+		os.Exit(0)
+	*/
 
+	temp := make([][][]uint8, Nv)
+
+	// 確か v = [0, 1, 0, ..., 0] という形を，転置して行動数分用意しているはず
+	// v_0 = [0, 0, 0, ..., 0]
+	// v_1 = [1, 1, 1, ..., 1]
+	// v_2 = [0, 0, 0, ..., 0]
 	for i := 0; i < Nv; i++ {
 		filename := fmt.Sprintf(VtName+"_%d", i)
 		if v_t[i] == 0 {
 			zeros := make([]float64, Na)
-			doublenc.DEenc(params, encoder, encryptor, publicKey, zeros, filename)
+			temp[i] = doublenc.DEenc(params, encoder, encryptor, publicKey, zeros, filename)
 		} else if v_t[i] == 1 {
 			ones := make([]float64, Na)
 			for i := range ones {
 				ones[i] = 1
 			}
-			doublenc.DEenc(params, encoder, encryptor, publicKey, ones, filename)
+			temp[i] = doublenc.DEenc(params, encoder, encryptor, publicKey, ones, filename)
 		}
 	}
+
+	DE_Wt := doublenc.DEenc(params, encoder, encryptor, publicKey, w_t, WtName)
 
 	Q_news := make([]float64, Na)
 	Q_news_name := "Q_news_name"
 	for i := range Q_news {
 		Q_news[i] = Q_new
 	}
-	doublenc.DEenc(params, encoder, encryptor, publicKey, Q_news, Q_news_name)
+	DE_Q_news := doublenc.DEenc(params, encoder, encryptor, publicKey, Q_news, Q_news_name)
 
 	//elapsed := time.Since(start)
 	//fmt.Printf("The function took %s to execute.\n", elapsed)
@@ -44,11 +58,10 @@ func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encrypto
 
 	// v_and_w = Vt[i] * Wt
 	// Qtable[i] += Q_new * (v_and_w) - Qtable[i] * (v_and_w)
-	fhe_Q_news := doublenc.RSAdec(privateKey, Q_news_name)
+	fhe_Q_news := doublenc.RSAdec2(privateKey, DE_Q_news)
 	for i := 0; i < Nv; i++ {
-		filename := fmt.Sprintf(VtName+"_%d", i)
-		fhe_v_t := doublenc.RSAdec(privateKey, filename)
-		fhe_w_t := doublenc.RSAdec(privateKey, WtName)
+		fhe_v_t := doublenc.RSAdec2(privateKey, temp[i])
+		fhe_w_t := doublenc.RSAdec2(privateKey, DE_Wt)
 
 		// make Qnew
 		v_and_w_Qnew := make([]float64, Na)
