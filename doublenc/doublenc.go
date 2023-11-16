@@ -102,15 +102,22 @@ func RSAenc(publicKey *rsa.PublicKey, fhe_ciphetext *rlwe.Ciphertext, filename s
 
 func RSAdec2(privateKey *rsa.PrivateKey, rsa_ciphertexts [][]uint8) *rlwe.Ciphertext {
 	results := make([][]byte, len(rsa_ciphertexts))
+	var wg sync.WaitGroup
 
 	for i := 0; i < len(rsa_ciphertexts); i++ {
-		rsa_ciphertext, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, privateKey, rsa_ciphertexts[i], nil)
-		if err != nil {
-			panic(err)
-		}
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
 
-		results[i] = rsa_ciphertext
+			rsa_ciphertext, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, privateKey, rsa_ciphertexts[i], nil)
+			if err != nil {
+				panic(err)
+			}
+
+			results[i] = rsa_ciphertext
+		}(i)
 	}
+	wg.Wait()
 
 	// Combine results in order
 	fhe_ciphertext_bytes := []byte{}
