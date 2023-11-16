@@ -63,7 +63,11 @@ func main() {
 	}
 
 	Agt := qlearn.NewAgent()
+	Agt1 := qlearn.NewAgent()
+	Agt2 := qlearn.NewAgent()
 	Agt.LenQ = 502
+	Agt1.LenQ = 502
+	Agt2.LenQ = 502
 
 	dirname := "./preprocessed_diabetes_SRL_dataset"
 
@@ -117,7 +121,13 @@ func main() {
 			rwd, _ := strconv.ParseFloat(record[3], 64)
 			next_status, _ := strconv.Atoi(record[4])
 
-			Agt.Learn(status, action, rwd, next_status, keyTools, encryptedQtable)
+			if i%3 == 0 {
+				Agt.Learn(status, action, rwd, next_status, keyTools, encryptedQtable)
+			} else if i%3 == 1 {
+				Agt1.Learn(status, action, rwd, next_status, keyTools, encryptedQtable)
+			} else {
+				Agt2.Learn(status, action, rwd, next_status, keyTools, encryptedQtable)
+			}
 
 			duration := time.Since(startTime)
 			totalDuration += duration

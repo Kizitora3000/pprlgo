@@ -1,6 +1,7 @@
 package qlearn
 
 import (
+	"pprlgo/doublenc"
 	"pprlgo/party"
 	"pprlgo/pprl"
 	"strconv"
@@ -35,13 +36,26 @@ func (e *Agent) Learn(s int, act int, rwd float64, next_s int, keyTools party.Ke
 	e.checkAndAddObservation(s)
 	e.checkAndAddObservation(next_s)
 
+	vs_t := make([]float64, e.LenQ)
+	vs_t[s] = 1
+	vs_t_name := "vs_t"
+
+	Qs_ciphertexts := pprl.SecureActionSelection(keyTools.Params, keyTools.Encoder, keyTools.Encryptor, keyTools.Decryptor, keyTools.Evaluator, keyTools.PublicKey, keyTools.PrivateKey, vs_t, e.LenQ, e.Nact, vs_t_name, encryptedQtable)
+	Qs := doublenc.DEdec2(keyTools.Params, keyTools.Encoder, keyTools.Decryptor, keyTools.PrivateKey, Qs_ciphertexts)
+	QsFloat64 := make([]float64, len(Qs))
+
+	for i, v := range Qs {
+		QsFloat64[i] = real(v)
+	}
+	e.Q[s] = QsFloat64
+
 	target := float64(0)
 	target = rwd + e.Gamma*maxValue(e.Q[next_s])
 
 	e.Q[s][act] = (1-e.Alpha)*e.Q[s][act] + e.Alpha*target
 
 	Qnew := e.Q[s][act]
-	v_t := make([]float64, e.LenQ) // マジックナンバー とりあえずUCIのデータセットの血糖値は最大で501
+	v_t := make([]float64, e.LenQ)
 	w_t := make([]float64, e.Nact)
 	v_t[s] = 1
 	w_t[act] = 1

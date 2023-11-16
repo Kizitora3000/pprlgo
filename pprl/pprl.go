@@ -104,7 +104,7 @@ func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encrypto
 	//fmt.Printf("The function took %s to execute.\n", elapsed)
 }
 
-func SecureActionSelection(params ckks.Parameters, encoder ckks.Encoder, encryptor rlwe.Encryptor, decryptor rlwe.Decryptor, evaluator ckks.Evaluator, publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey, v_t []float64, Nv int, Na int, filename string, EncryptedQtable []*rlwe.Ciphertext) {
+func SecureActionSelection(params ckks.Parameters, encoder ckks.Encoder, encryptor rlwe.Encryptor, decryptor rlwe.Decryptor, evaluator ckks.Evaluator, publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey, v_t []float64, Nv int, Na int, filename string, EncryptedQtable []*rlwe.Ciphertext) [][]uint8 {
 	VtName := "VtName"
 
 	// 準同型演算のために縦行列を横に拡張する
@@ -112,25 +112,25 @@ func SecureActionSelection(params ckks.Parameters, encoder ckks.Encoder, encrypt
 	// 1, ->  [1, 1, 1, 1]
 	// 0]		[0, 0, 0, 0]
 
+	v_t_extend := make([][][]uint8, Nv)
 	for i := 0; i < Nv; i++ {
 		filename := fmt.Sprintf(VtName+"_%d", i)
 		if v_t[i] == 0 {
 			zeros := make([]float64, Na)
-			doublenc.DEenc(params, encoder, encryptor, publicKey, zeros, filename)
+			v_t_extend[i] = doublenc.DEenc(params, encoder, encryptor, publicKey, zeros, filename)
 		} else if v_t[i] == 1 {
 			ones := make([]float64, Na)
 			for i := range ones {
 				ones[i] = 1
 			}
-			doublenc.DEenc(params, encoder, encryptor, publicKey, ones, filename)
+			v_t_extend[i] = doublenc.DEenc(params, encoder, encryptor, publicKey, ones, filename)
 		}
 	}
 
 	zeros := make([]float64, Na)
 	result := doublenc.FHEenc(params, encoder, encryptor, zeros)
 	for i := 0; i < Nv; i++ {
-		filename := fmt.Sprintf(VtName+"_%d", i)
-		vt := doublenc.RSAdec(privateKey, filename)
+		vt := doublenc.RSAdec2(privateKey, v_t_extend[i])
 		evaluator.Mul(vt, EncryptedQtable[i], vt)
 
 		// The multiplicable depth is one, so Relinearize is used to reset depth.
@@ -138,6 +138,6 @@ func SecureActionSelection(params ckks.Parameters, encoder ckks.Encoder, encrypt
 		evaluator.Add(result, vt, result)
 	}
 
-	doublenc.RSAenc(publicKey, result, filename)
-	return
+	Qs_ciphertexts := doublenc.RSAenc(publicKey, result, filename)
+	return Qs_ciphertexts
 }

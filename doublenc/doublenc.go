@@ -42,6 +42,13 @@ func DEdec(params ckks.Parameters, encoder ckks.Encoder, decryptor rlwe.Decrypto
 	return plaintext
 }
 
+func DEdec2(params ckks.Parameters, encoder ckks.Encoder, decryptor rlwe.Decryptor, privateKey *rsa.PrivateKey, DE_ciphetext [][]uint8) []complex128 {
+	fhe_ciphetext := RSAdec2(privateKey, DE_ciphetext)
+	plaintext := FHEdec(params, encoder, decryptor, fhe_ciphetext)
+
+	return plaintext
+}
+
 func FHEenc(params ckks.Parameters, encoder ckks.Encoder, encryptor rlwe.Encryptor, vector []float64) *rlwe.Ciphertext {
 	r := float64(16)
 
