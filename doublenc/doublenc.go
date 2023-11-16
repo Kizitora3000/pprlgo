@@ -28,9 +28,11 @@ max_size = 256 - 2 * 32 - 2 = 190 byte
 */
 const MAX_RSA_CIPHERTEXT_SIZE = 190
 
-func DEenc(params ckks.Parameters, encoder ckks.Encoder, encryptor rlwe.Encryptor, publicKey *rsa.PublicKey, vector []float64, filename string) {
+func DEenc(params ckks.Parameters, encoder ckks.Encoder, encryptor rlwe.Encryptor, publicKey *rsa.PublicKey, vector []float64, filename string) [][]uint8 {
 	fhe_ciphetext := FHEenc(params, encoder, encryptor, vector)
-	RSAenc(publicKey, fhe_ciphetext, filename)
+	rsa_ciphertext := RSAenc(publicKey, fhe_ciphetext, filename)
+
+	return rsa_ciphertext
 }
 
 func DEdec(params ckks.Parameters, encoder ckks.Encoder, decryptor rlwe.Decryptor, privateKey *rsa.PrivateKey, filename string) []complex128 {
@@ -61,7 +63,7 @@ func FHEdec(params ckks.Parameters, encoder ckks.Encoder, decryptor rlwe.Decrypt
 	return plaintext
 }
 
-func RSAenc(publicKey *rsa.PublicKey, fhe_ciphetext *rlwe.Ciphertext, filename string) {
+func RSAenc(publicKey *rsa.PublicKey, fhe_ciphetext *rlwe.Ciphertext, filename string) [][]uint8 {
 	// convert ciphtext into bytes
 	fhe_ciphetext_bytes, err := fhe_ciphetext.MarshalBinary()
 	if err != nil {
@@ -75,15 +77,7 @@ func RSAenc(publicKey *rsa.PublicKey, fhe_ciphetext *rlwe.Ciphertext, filename s
 		total_chunks++
 	}
 
-	// make output dir if it doesn't exist
-	dir_path := "doublenc/output/rsa_" + filename
-	if _, err := os.Stat(dir_path); os.IsNotExist(err) {
-		err_dir := os.MkdirAll(dir_path, 0755)
-		if err_dir != nil {
-			fmt.Printf("Error creating directory: %v\n", err_dir)
-			return
-		}
-	}
+	rsa_ciphertexts := make([][]byte, total_chunks)
 
 	// split fhe_ciphetext_bytes and encrypt it by RSA
 	for i := 0; i < total_chunks; i++ {
@@ -100,11 +94,41 @@ func RSAenc(publicKey *rsa.PublicKey, fhe_ciphetext *rlwe.Ciphertext, filename s
 			panic(err)
 		}
 
-		splited_filename := fmt.Sprintf(dir_path+"/rsa_"+filename+"_%d"+".txt", i+1)
-		if err := os.WriteFile(splited_filename, rsa_ciphertext, 0644); err != nil {
-			panic(err)
-		}
+		rsa_ciphertexts[i] = rsa_ciphertext
 	}
+
+	return rsa_ciphertexts
+}
+
+func RSAdec2(privateKey *rsa.PrivateKey, rsa_ciphertexts [][]uint8) *rlwe.Ciphertext {
+	results := make([][]byte, len(rsa_ciphertexts))
+	var wg sync.WaitGroup
+
+	for i := 0; i < len(rsa_ciphertexts); i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+
+			rsa_ciphertext, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, privateKey, rsa_ciphertexts[i], nil)
+			if err != nil {
+				panic(err)
+			}
+
+			results[i] = rsa_ciphertext
+		}(i)
+	}
+	wg.Wait()
+
+	// Combine results in order
+	fhe_ciphertext_bytes := []byte{}
+	for _, bytes := range results {
+		fhe_ciphertext_bytes = append(fhe_ciphertext_bytes, bytes...)
+	}
+
+	fhe_ciphertext := new(rlwe.Ciphertext)
+	_ = fhe_ciphertext.UnmarshalBinary(fhe_ciphertext_bytes)
+
+	return fhe_ciphertext
 }
 
 func RSAdec(privateKey *rsa.PrivateKey, filename string) *rlwe.Ciphertext {
