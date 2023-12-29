@@ -31,7 +31,7 @@ func NewAgent() *Agent {
 	}
 }
 
-func (e *Agent) Learn(s int, act int, rwd float64, next_s int, keyTools party.KeyTools, encryptedQtable []*rlwe.Ciphertext) {
+func (e *Agent) Learn(s int, act int, rwd float64, next_s int, keyTools party.CkksKeyTools, encryptedQtable []*rlwe.Ciphertext) {
 	e.checkAndAddObservation(s)
 	e.checkAndAddObservation(next_s)
 
@@ -46,6 +46,23 @@ func (e *Agent) Learn(s int, act int, rwd float64, next_s int, keyTools party.Ke
 	v_t[s] = 1
 	w_t[act] = 1
 	pprl.SecureQtableUpdating(keyTools.Params, keyTools.Encoder, keyTools.Encryptor, keyTools.Decryptor, keyTools.Evaluator, keyTools.PublicKey, keyTools.PrivateKey, v_t, w_t, Qnew, e.LenQ, e.Nact, encryptedQtable)
+}
+
+func (e *Agent) Learn_BFV(s int, act int, rwd float64, next_s int, keyTools party.BfvKeyTools, encryptedQtable []*rlwe.Ciphertext) {
+	e.checkAndAddObservation(s)
+	e.checkAndAddObservation(next_s)
+
+	target := float64(0)
+	target = rwd + e.Gamma*maxValue(e.Q[next_s])
+
+	e.Q[s][act] = (1-e.Alpha)*e.Q[s][act] + e.Alpha*target
+
+	Qnew := uint64(e.Q[s][act] * 1000) // 係数でとりあえず 1000掛けとく
+	v_t := make([]uint64, e.LenQ)      // マジックナンバー とりあえずUCIのデータセットの血糖値は最大で501
+	w_t := make([]uint64, e.Nact)
+	v_t[s] = 1
+	w_t[act] = 1
+	pprl.SecureQtableUpdatingWithBFV(keyTools.Params, keyTools.Encoder, keyTools.Encryptor, keyTools.Decryptor, keyTools.Evaluator, keyTools.PublicKey, keyTools.PrivateKey, v_t, w_t, Qnew, e.LenQ, e.Nact, encryptedQtable)
 }
 
 func (e *Agent) GetQ(s int) []float64 {
