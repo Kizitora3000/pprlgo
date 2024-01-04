@@ -8,6 +8,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/tuneinsight/lattigo/v4/bfv"
 	"github.com/tuneinsight/lattigo/v4/ckks"
 	"github.com/tuneinsight/lattigo/v4/rlwe"
 )
@@ -151,4 +152,22 @@ func RSAdec(privateKey *rsa.PrivateKey, filename string) *rlwe.Ciphertext {
 	err = fhe_ciphertext.UnmarshalBinary(fhe_ciphertext_bytes)
 
 	return fhe_ciphertext
+}
+
+func BFVenc(params bfv.Parameters, encoder bfv.Encoder, encryptor rlwe.Encryptor, vector []uint64) *rlwe.Ciphertext {
+	plaintext := bfv.NewPlaintext(params, params.MaxLevel())
+	encoder.Encode(vector, plaintext)
+	ciphertext := encryptor.EncryptNew(plaintext)
+
+	return ciphertext
+}
+
+func BFVdec(params bfv.Parameters, encoder bfv.Encoder, decryptor rlwe.Decryptor, ciphertext *rlwe.Ciphertext) []uint64 {
+	plaintext := encoder.DecodeUintNew(decryptor.DecryptNew(ciphertext))
+	return plaintext
+}
+
+func DEencBFV(params bfv.Parameters, encoder bfv.Encoder, encryptor rlwe.Encryptor, publicKey *rsa.PublicKey, vector []uint64, filename string) {
+	bfv_ciphetext := BFVenc(params, encoder, encryptor, vector)
+	RSAenc(publicKey, bfv_ciphetext, filename)
 }
