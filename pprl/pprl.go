@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"fmt"
 	"pprlgo/doublenc"
+	"time"
 
 	"github.com/tuneinsight/lattigo/v4/bfv"
 	"github.com/tuneinsight/lattigo/v4/ckks"
@@ -55,7 +56,7 @@ func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encrypto
 	//elapsed := time.Since(start)
 	//fmt.Printf("The function took %s to execute.\n", elapsed)
 
-	//start = time.Now()
+	start := time.Now()
 
 	// v_and_w = Vt[i] * Wt
 	// Qtable[i] += Q_new * (v_and_w) - Qtable[i] * (v_and_w)
@@ -101,8 +102,8 @@ func SecureQtableUpdating(params ckks.Parameters, encoder ckks.Encoder, encrypto
 		evaluator.Sub(EncryptedQtable[i], re_fhe_v_and_w_Qold, EncryptedQtable[i])
 	}
 
-	//elapsed = time.Since(start)
-	//fmt.Printf("The function took %s to execute.\n", elapsed)
+	elapsed := time.Since(start)
+	fmt.Printf("The function took %s to execute.\n", elapsed)
 }
 
 func SecureActionSelection(params ckks.Parameters, encoder ckks.Encoder, encryptor rlwe.Encryptor, decryptor rlwe.Decryptor, evaluator ckks.Evaluator, publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey, v_t []float64, Nv int, Na int, filename string, EncryptedQtable []*rlwe.Ciphertext) {
@@ -185,62 +186,49 @@ func SecureQtableUpdatingWithBFV(params bfv.Parameters, encoder bfv.Encoder, enc
 	}
 	DE_Q_news := doublenc.DEencBFV(params, encoder, encryptor, publicKey, Q_news, Q_news_name)
 
-	_ = doublenc.RSAdec2(privateKey, DE_Q_news)
+	start := time.Now()
+	fhe_Q_news := doublenc.RSAdec2(privateKey, DE_Q_news)
 	for i := 0; i < Nv; i++ {
-		_ = doublenc.RSAdec2(privateKey, temp[i])
-		_ = doublenc.RSAdec2(privateKey, DE_Wt)
-	}
+		fhe_v_t := doublenc.RSAdec2(privateKey, temp[i])
+		fhe_w_t := doublenc.RSAdec2(privateKey, DE_Wt)
 
-	return
-	/*
-		//start = time.Now()
+		v_and_w_Qnew := make([]uint64, Na)
+		fhe_v_and_w_Qnew := doublenc.BFVenc(params, encoder, encryptor, v_and_w_Qnew)
+		fhe_v_and_w_Qnew = evaluator.MulNew(fhe_v_t, fhe_w_t)
+		evaluator.Relinearize(fhe_v_and_w_Qnew, fhe_v_and_w_Qnew)
+		fhe_v_and_w_Qnew = evaluator.MulNew(fhe_v_and_w_Qnew, fhe_Q_news)
 
-		// v_and_w = Vt[i] * Wt
-		// Qtable[i] += Q_new * (v_and_w) - Qtable[i] * (v_and_w)
-		fhe_Q_news := doublenc.RSAdec2(privateKey, DE_Q_news)
-		for i := 0; i < Nv; i++ {
-			fhe_v_t := doublenc.RSAdec2(privateKey, temp[i])
-			fhe_w_t := doublenc.RSAdec2(privateKey, DE_Wt)
+		// make Qold
+		v_and_w_Qold := make([]uint64, Na)
+		fhe_v_and_w_Qold := doublenc.BFVenc(params, encoder, encryptor, v_and_w_Qold)
+		fhe_v_and_w_Qold = evaluator.MulNew(fhe_v_t, fhe_w_t)
+		evaluator.Relinearize(fhe_v_and_w_Qold, fhe_v_and_w_Qold)
 
-			// make Qnew
-			v_and_w_Qnew := make([]float64, Na)
-			fhe_v_and_w_Qnew := doublenc.FHEenc(params, encoder, encryptor, v_and_w_Qnew)
-			evaluator.Mul(fhe_v_t, fhe_w_t, fhe_v_and_w_Qnew)
-			evaluator.Relinearize(fhe_v_and_w_Qnew, fhe_v_and_w_Qnew)
-			evaluator.Mul(fhe_v_and_w_Qnew, fhe_Q_news, fhe_v_and_w_Qnew)
+		fhe_v_and_w_Qold = evaluator.MulNew(fhe_v_and_w_Qold, EncryptedQtable[i])
 
-			// make Qold
-			v_and_w_Qold := make([]float64, Na)
-			fhe_v_and_w_Qold := doublenc.FHEenc(params, encoder, encryptor, v_and_w_Qold)
-			evaluator.Mul(fhe_v_t, fhe_w_t, fhe_v_and_w_Qold)
-			evaluator.Relinearize(fhe_v_and_w_Qold, fhe_v_and_w_Qold)
+		evaluator.Relinearize(fhe_v_and_w_Qnew, fhe_v_and_w_Qnew)
+		evaluator.Relinearize(fhe_v_and_w_Qold, fhe_v_and_w_Qold)
 
-			evaluator.Mul(fhe_v_and_w_Qold, EncryptedQtable[i], fhe_v_and_w_Qold)
-
-			evaluator.Relinearize(fhe_v_and_w_Qnew, fhe_v_and_w_Qnew)
-			evaluator.Relinearize(fhe_v_and_w_Qold, fhe_v_and_w_Qold)
-
-			decrypt_fhe_v_and_w_Qnew := doublenc.FHEdec(params, encoder, decryptor, fhe_v_and_w_Qnew)
-			realValues1 := make([]float64, len(decrypt_fhe_v_and_w_Qnew))
-			for i, v := range decrypt_fhe_v_and_w_Qnew {
-				realValues1[i] = real(v)
-			}
-			re_fhe_v_and_w_Qnew := doublenc.FHEenc(params, encoder, encryptor, realValues1)
-
-			decrypt_fhe_v_and_w_Qold := doublenc.FHEdec(params, encoder, decryptor, fhe_v_and_w_Qold)
-			realValues2 := make([]float64, len(decrypt_fhe_v_and_w_Qold))
-			for i, v := range decrypt_fhe_v_and_w_Qold {
-				realValues2[i] = real(v)
-			}
-			re_fhe_v_and_w_Qold := doublenc.FHEenc(params, encoder, encryptor, realValues2)
-
-			// EncryptedQtalbe[i]がノイズで爆発する
-			evaluator.Add(EncryptedQtable[i], re_fhe_v_and_w_Qnew, EncryptedQtable[i])
-			evaluator.Sub(EncryptedQtable[i], re_fhe_v_and_w_Qold, EncryptedQtable[i])
+		decrypt_fhe_v_and_w_Qnew := doublenc.BFVdec(params, encoder, decryptor, fhe_v_and_w_Qnew)
+		realValues1 := make([]uint64, len(decrypt_fhe_v_and_w_Qnew))
+		for i, v := range decrypt_fhe_v_and_w_Qnew {
+			realValues1[i] = v
 		}
+		re_fhe_v_and_w_Qnew := doublenc.BFVenc(params, encoder, encryptor, realValues1)
 
-		//elapsed = time.Since(start)
-		//fmt.Printf("The function took %s to execute.\n", elapsed)
-	*/
+		decrypt_fhe_v_and_w_Qold := doublenc.BFVdec(params, encoder, decryptor, fhe_v_and_w_Qold)
+		realValues2 := make([]uint64, len(decrypt_fhe_v_and_w_Qold))
+		for i, v := range decrypt_fhe_v_and_w_Qold {
+			realValues2[i] = v
+		}
+		re_fhe_v_and_w_Qold := doublenc.BFVenc(params, encoder, encryptor, realValues2)
+
+		// EncryptedQtalbe[i]がノイズで爆発する
+		EncryptedQtable[i] = evaluator.AddNew(EncryptedQtable[i], re_fhe_v_and_w_Qnew)
+		EncryptedQtable[i] = evaluator.SubNew(EncryptedQtable[i], re_fhe_v_and_w_Qold)
+	}
+	elapsed := time.Since(start)
+	fmt.Printf("The function took %s to execute.\n", elapsed)
+
 	return
 }

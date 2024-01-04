@@ -186,6 +186,11 @@ func BFVenc(params bfv.Parameters, encoder bfv.Encoder, encryptor rlwe.Encryptor
 	return ciphertext
 }
 
+func BFVdec(params bfv.Parameters, encoder bfv.Encoder, decryptor rlwe.Decryptor, ciphertext *rlwe.Ciphertext) []uint64 {
+	plaintext := encoder.DecodeUintNew(decryptor.DecryptNew(ciphertext))
+	return plaintext
+}
+
 func DEencBFV(params bfv.Parameters, encoder bfv.Encoder, encryptor rlwe.Encryptor, publicKey *rsa.PublicKey, vector []uint64, filename string) [][]uint8 {
 	bfv_ciphetext := BFVenc(params, encoder, encryptor, vector)
 	rsa_ciphertext := RSAenc(publicKey, bfv_ciphetext, filename)

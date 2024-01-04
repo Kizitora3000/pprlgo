@@ -21,7 +21,7 @@ import (
 )
 
 func main() {
-	USE_BFV := true
+	USE_BFV := false
 
 	if USE_BFV {
 		// BFVパラメータの設定 (128ビットセキュリティ、素数モジュラス)
@@ -35,8 +35,9 @@ func main() {
 		sk, pk := kgen.GenKeyPair()
 		encoder := bfv.NewEncoder(params)
 		encryptor := bfv.NewEncryptor(params, pk)
-		evaluator := bfv.NewEvaluator(params, rlwe.EvaluationKey{})
 		decryptor := bfv.NewDecryptor(params, sk)
+		rlk := kgen.GenRelinearizationKey(sk, 1)
+		evaluator := bfv.NewEvaluator(params, rlwe.EvaluationKey{Rlk: rlk})
 		privateKey, _ := rsa.GenerateKey(rand.Reader, 2048)
 		publicKey := &privateKey.PublicKey
 
@@ -130,30 +131,32 @@ func main() {
 				totalDuration += duration
 				// fmt.Println(duration) // 平均時間を計算
 				fmt.Printf("file: %s\tindex:%d\ttime:%s\n", file.Name(), i, duration)
-
+				return
 			}
 		}
 		return
 	}
 
+	/*
+		params, err := ckks.NewParametersFromLiteral(
+			ckks.ParametersLiteral{
+				LogN:         7,
+				LogQ:         []int{35, 60, 60},
+				LogP:         []int{45, 45},
+				LogSlots:     6,
+				DefaultScale: 1 << 30,
+			})
+	*/
+	// security level 128
 	params, err := ckks.NewParametersFromLiteral(
 		ckks.ParametersLiteral{
-			LogN:         7,
-			LogQ:         []int{35, 60, 60},
+			LogN:         13,                // 13
+			LogQ:         []int{35, 60, 60}, // []int{55, 40, 40},
 			LogP:         []int{45, 45},
 			LogSlots:     6,
 			DefaultScale: 1 << 30,
 		})
-	/* security level 128
-	params, err := ckks.NewParametersFromLiteral(
-		ckks.ParametersLiteral{
-	LogN:         13,                // 13
-	LogQ:         []int{35, 60, 60}, // []int{55, 40, 40},
-	LogP:         []int{45, 45},
-	LogSlots:     1,
-	DefaultScale: 1 << 30,
-	})
-	*/
+
 	if err != nil {
 		panic(err)
 	}
